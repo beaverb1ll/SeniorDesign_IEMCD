@@ -310,6 +310,8 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 int sendCommand_getAck(int fd, const char *command)
 {
 	char buffer[5];
+	int numRead;
+
 	write (fd, command, sizeof(command));
 	// wait for response
 	numRead = read (fd, buffer, sizeof(buffer));
