@@ -235,7 +235,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		strcat(queryString, barcode);
 		// update sql
 
-		if (mysql_query(con, query)) {      
+		if (mysql_query(con, queryString)) {      
     		sylsog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
     	}
 
