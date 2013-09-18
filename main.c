@@ -387,7 +387,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	if (num_rows != 1)
   	{
   		syslog(LOG_INFO, "Invalid number of rows returned for query: %s", query);
-  		return NULL:	
+  		return NULL;
   	}
 
   	row = mysql_fetch_row(result);
