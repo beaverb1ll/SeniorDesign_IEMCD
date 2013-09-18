@@ -363,7 +363,7 @@ int sendCommand_getAck(int fd, const char *command)
  */
 int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 {
-	int num_rows;
+	int num_rows, i;
 	MYSQL_ROW row;
 	MYSQL_RES *result;
 	int *ingred;
@@ -395,7 +395,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
   	
-  	for (int i = 0; i < NUM_INGREDIENTS; i++)
+  	for (i = 0; i < NUM_INGREDIENTS; i++)
   	{
   		ingred[i] = row[i];
   	}
