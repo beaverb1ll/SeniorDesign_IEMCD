@@ -67,6 +67,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
+int parseArgs(int argc, char const *argv[]);
 
 
 int main(int argc, char const *argv[])
@@ -243,7 +244,10 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 	return 0;
 }
 
-
+int parseArgs(int argc, char const *argv[])
+{
+	return 0;
+}
 
 /*
  *
