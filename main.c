@@ -277,7 +277,8 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 	for (i = 0; i < NUM_INGREDIENTS; i++)
 	{
 		// convert ingredient to string and store into command
-		itoa(ingredArray[i], command, 10);
+		sprintf(command, "%d", ingredArray[i]);
+		// itoa(ingredArray[i], command, 10);
 		// append end string
 		strcat(command, endString);
 
