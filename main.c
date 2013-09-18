@@ -76,7 +76,7 @@ int main(int argc, char const *argv[])
 	MYSQL *con_SQL;
 
 
-	parseArgs(int argc, char const *argv[]);
+	parseArgs(argc, argv);
 
 	fd_CB = openSerial("/dev/ttyS0", B38400, 0, 1);
 
