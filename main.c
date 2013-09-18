@@ -50,7 +50,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <signal.h>
-#include <mysql.h>
+#include <mysql/mysql.h>
 
 
 #define TRUE 1
