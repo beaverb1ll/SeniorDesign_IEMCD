@@ -210,7 +210,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 
 		// query sql for barcode
 		ingredients = getIngredFromSQL(con, queryString);
-		if (ingredients == NULL)) 
+		if (ingredients == NULL) 
 		{
 			// start over if invalid
 			continue;
