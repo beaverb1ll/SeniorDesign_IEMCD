@@ -82,7 +82,7 @@ int main(int argc, char const *argv[])
 
 	fd_barcode = openSerial("/dev/ttyS1", B38400, 0, BARCODE_LENGTH);
 
-	con_SQL = openSQL("DBName");
+	con_SQL = openSQL("root", "password", "DBName");
 
 	readBarcodes(fd_CB, fd_barcode, con_SQL);
 
