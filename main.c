@@ -13,12 +13,36 @@
 		//  |    -> If found, send commands to serial 
 		//   ->  Else continue.
 
+
+
+/*
+
+	SQL Schema Used:
+	Integer id,
+	varchar drinkID, 
+	DateTime orderTime,
+	DateTime pickupTime,
+	Bool pickedup,
+	Integer Ing0,
+	Integer Ing1,
+	Integer Ing2,
+	Integer Ing3,
+	Integer Ing4,
+	Integer Ing5
+
+
+
+
+
+*/
+
 #include <stdio.h>
 
 #define TRUE 1
 #define FALSE 0
 
 #define BARCODE_LENGTH 50
+#define NUM_INGREDIENTS 6
 
 
 
@@ -30,19 +54,21 @@ int main(int argc, char const *argv[])
 
 	parseArgs(int argc, char const *argv[]);
 
-	fd_CB = openSerial("/dev/ttyS0", B38400, 0);
+	fd_CB = openSerial("/dev/ttyS0", B38400, 0, 1);
 
-	fd_barcode = openBarcodeComm();
+	fd_barcode = openSerial("/dev/ttyS1", B38400, 0, BARCODE_LENGTH);
 
 	con_SQL = openSQL("DBName");
 
-	readBarcodes();
+	readBarcodes(fd_CB, fd_barcode, con_SQL);
 
+	close(fd_CB);
+	close(fd_barcode);
 	mysql_close(con_SQL);
 	return 0;
 }
 
-int openSerial(const char *ttyName, int speed, int parity ) 
+int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt ) 
 {
     int fd; 
 
@@ -53,7 +79,7 @@ int openSerial(const char *ttyName, int speed, int parity )
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
-    set_blocking (fd, BARCODE_LENGTH, 1); 	// block for BARCODE_LENGTH chars or .1 sec
+    set_blocking (fd, blockingAmnt, 1); 	// block for BARCODE_LENGTH chars or .1 sec
     return fd;
 }
 
@@ -116,26 +142,208 @@ void set_blocking (int fd, int block_numChars, int block_timeout)
         }
 }
 
-MYSQL* openSQL(const char *db_Name) {
+MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name) 
+{
 
 	MYSQL *con = mysql_init(NULL);
   
 	if (con == NULL) {
-    	fprintf(stderr, "%s\n", mysql_error(con));
+    	syslog(LOG_INFO, "%s  Exiting...\n", mysql_error(con));
      	exit(1);
 	}  
 
-  	if (mysql_real_connect(con, "localhost", "user12", "34klq*", db_Name, 0, NULL, 0) == NULL) {
-    	finish_with_error(con);
+  	if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL) {
+    	syslog(LOG_INFO, "%s  Exiting...\n", mysql_error(con));
+    	mysql_close(con);
+  		exit(1); 
   	}
   	return  con;
 }
 
-int readBarcodes() {
-	
-	while (TRUE) {
 
+int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
+{
+	char buffer[BARCODE_LENGTH + 1];
+	MYSQL_ROW *aRow;
+
+	while (TRUE) {
+		// wait for barcode.
+		numRead = read (barcodeFD, buffer, sizeof(buffer));
+		buffer[numRead] = '\0';
+		
+		if(numRead < BARCODE_LENGTH)
+		{
+			syslog(LOG_INFO, "Only read %d chars from barcode. Ignoring input", numRead);
+			continue;
+		}
+
+		// construct query string
+
+		// query sql for barcode
+		aRow = getRowFromSQL(con, queryString);
+		if (aRow == NULL)) 
+		{
+			// start over if invalid
+			free(aRow);
+			aRow = NULL;
+			continue;
+		}
+
+		// convert SQL row into some usable datastructure
+
+		// send commands to CB Board
+		if (dispenseDrink(commandsFD) != 0)
+		{
+			// something went wrong. don't touch sql.
+			syslog(LOG_INFO, "Error from dispenseDrink, leaving SQL row intact");
+			continue;
+		}
+
+		// something must have gone ok. manipulate sql.
+			// create query string
+			// update sql
 
 	}
 	return 0;
+}
+/*
+ *
+ * Input:
+ *
+ * Output:
+ *	- Sucess: 0
+ *	- Error: 1
+ *
+ */
+int dispenseDrink(int cb_fd, int *ingredArray) 
+{
+	int i, response;
+	const char *endString = "T";
+	char *command[50];
+
+
+	// ask for clear to send
+	if(sendCommand_getAck(cb_fd, "D"))
+	{
+		// uh oh, something went wrong.
+		syslog(LOG_INFO, "Comm error with dispenseDrink");
+		return 1;
+	}
+
+	// loop through and send each ingred, waiting for repsonse between each command
+	for (i = 0; i < NUM_INGREDIENTS; i++)
+	{
+		// convert ingredient to string and store into command
+		itoa(ingredArray[i], command, 10);
+		// append end string
+		strcat(command, endString);
+
+		// send commmand, wait for response
+		if(sendCommand_getAck(cb_fd, command))
+		{
+			// uh oh, something went wrong.
+			syslog(LOG_INFO, "Comm error with dispenseDrink");
+			return 1;
+		}
+	}
+
+	if(sendCommand_getAck(cb_fd, "F"))
+	{
+		// uh oh, something went wrong.
+		syslog(LOG_INFO, "Comm error with dispenseDrink");
+		return 1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *
+ * Output: 
+ *	- On success: 0
+ *	- On failure: 1
+ */
+int sendCommand_getAck(int fd, const char *command)
+{
+	char buffer[5];
+	write (fd, command, sizeof(command));
+	// wait for response
+	numRead = read (fd, buffer, sizeof(buffer));
+	buffer[numRead] = '\0';
+		
+	if(numRead < 1)
+	{
+		syslog(LOG_INFO, "Error reading ack from fd");
+		return 1;
+	}
+
+	switch (buffer[1]) 
+	{
+		case 'f':
+			// fall through
+		case 'F':
+			// fall through
+		case 'y':
+			// fall through
+		case 'Y':
+			return 0;
+			break;
+
+		case 'n':
+			// fall through
+		case 'N':
+			// fall through
+		default:
+			return 1;
+	}
+}
+
+/*
+ * Input: 
+ *	- a SQL connection
+ *  - a query string
+ *
+ * Output: 
+ *  - If one row found, pointer to object from query
+ *	  Else: NULL
+ *
+ *
+ *
+ * This will query the sql database for a anything 
+ *	and will return a pointer to the row if only one entry was 
+ *	found and will return NULL otherwise. This function 
+ *	will log with syslog if an error is encountered.
+ *
+ */
+MYSQL_ROW* getRowFromSQL(MYSQL *sql_con, const char *query)
+{
+	int num_fields;
+	MYSQL_ROW row;
+	MYSQL_RES *result;
+	
+	if (mysql_query(con, query)) {      
+    	sylsog(LOG_INFO, "Unable to query SQL with string: %s", query);
+    	return NULL;
+	}
+
+	result = mysql_store_result(con);
+  
+  	if (result == NULL) {
+  		mysql_free_result(result);
+    	syslog(LOG_INFO, "Unable to get result from SQL query: %s", query);
+    	return NULL;
+ 	}
+
+  	num_fields = mysql_num_fields(result);
+
+  	if (num_fields != 1)
+  	{
+  		syslog(LOG_INFO, "Invalid number of rows returned for query: %s", query);
+  		return NULL:	
+  	}
+
+  	row = mysql_fetch_row(result);
+  	mysql_free_result(result);
+  	return row;
 }
