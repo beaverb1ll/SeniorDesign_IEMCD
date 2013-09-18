@@ -191,7 +191,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE orderID=";
 	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
 	char queryString[200];
-	int *ingredients;
+	int *ingredients, numRead;
 
 	while (TRUE) {
 		// wait for barcode.
