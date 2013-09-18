@@ -75,6 +75,8 @@ int main(int argc, char const *argv[])
 	int fd_CB, fd_barcode;
 	MYSQL *con_SQL;
 
+	openlog("IEMCD", LOG_PID|LOG_CONS, LOG_USER);
+    syslog(LOG_INFO, "Daemon Started.\n");
 
 	parseArgs(argc, argv);
 
