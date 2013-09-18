@@ -236,7 +236,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		// update sql
 
 		if (mysql_query(con, queryString)) {      
-    		sylsog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
+    		syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
     	}
 
     	// do another barcode
@@ -369,7 +369,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	int *ingred;
 	
 	if (mysql_query(sql_con, query)) {      
-    	sylsog(LOG_INFO, "Unable to query SQL with string: %s", query);
+    	syslog(LOG_INFO, "Unable to query SQL with string: %s", query);
     	return NULL;
 	}
 
