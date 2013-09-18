@@ -262,7 +262,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 {
 	int i, response;
 	const char *endString = "T";
-	char *command[50];
+	char command[50];
 
 
 	// ask for clear to send
