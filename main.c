@@ -18,17 +18,18 @@
 /*
 
 	SQL Schema Used:
-	Integer id,
-	varchar drinkID, 
-	DateTime orderTime,
-	DateTime pickupTime,
-	Bool pickedup,
-	Integer Ing0,
-	Integer Ing1,
-	Integer Ing2,
-	Integer Ing3,
-	Integer Ing4,
-	Integer Ing5
+	ordertable ->
+		Integer id,
+		varchar orderID, 
+		DateTime orderTime,
+		DateTime pickupTime,
+		Bool pickedup,
+		Integer Ing0,
+		Integer Ing1,
+		Integer Ing2,
+		Integer Ing3,
+		Integer Ing4,
+		Integer Ing5
 
 
 
@@ -44,6 +45,14 @@
 #define BARCODE_LENGTH 50
 #define NUM_INGREDIENTS 6
 
+int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt);
+int set_interface_attribs (int fd, int speed, int parity);
+void set_blocking (int fd, int block_numChars, int block_timeout);
+MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name);
+int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con);
+int dispenseDrink(int cb_fd, int *ingredArray);
+int sendCommand_getAck(int fd, const char *command);
+int* getIngredFromSQL(MYSQL *sql_con, const char *query);
 
 
 int main(int argc, char const *argv[])
@@ -68,7 +77,7 @@ int main(int argc, char const *argv[])
 	return 0;
 }
 
-int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt ) 
+int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt) 
 {
     int fd; 
 
@@ -163,13 +172,16 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 
 int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 {
-	char buffer[BARCODE_LENGTH + 1];
-	MYSQL_ROW *aRow;
+	char barcode[BARCODE_LENGTH + 1];
+	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE orderID=";
+	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
+	char queryString[200];
+	int *ingredients;
 
 	while (TRUE) {
 		// wait for barcode.
-		numRead = read (barcodeFD, buffer, sizeof(buffer));
-		buffer[numRead] = '\0';
+		numRead = read (barcodeFD, barcode, sizeof(barcode));
+		barcode[numRead] = '\0';
 		
 		if(numRead < BARCODE_LENGTH)
 		{
@@ -178,34 +190,47 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		}
 
 		// construct query string
+		strcpy(queryString, baseSelect);
+		strcat(queryString, barcode);
 
 		// query sql for barcode
-		aRow = getRowFromSQL(con, queryString);
-		if (aRow == NULL)) 
+		ingredients = getIngredFromSQL(con, queryString);
+		if (ingredients == NULL)) 
 		{
 			// start over if invalid
-			free(aRow);
-			aRow = NULL;
 			continue;
 		}
 
-		// convert SQL row into some usable datastructure
 
 		// send commands to CB Board
-		if (dispenseDrink(commandsFD) != 0)
+		if (dispenseDrink(commandsFD, ingredients) != 0)
 		{
 			// something went wrong. don't touch sql.
+			free(ingredients);
 			syslog(LOG_INFO, "Error from dispenseDrink, leaving SQL row intact");
 			continue;
 		}
 
-		// something must have gone ok. manipulate sql.
-			// create query string
-			// update sql
+		// free ingredients, they are no longer needed.
+		free(ingredients);
 
+		// something must have gone ok. manipulate sql.
+		// create query string
+		strcpy(queryString, baseUpdate);
+		strcat(queryString, barcode);
+		// update sql
+
+		if (mysql_query(con, query)) {      
+    		sylsog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
+    	}
+
+    	// do another barcode
 	}
 	return 0;
 }
+
+
+
 /*
  *
  * Input:
@@ -316,18 +341,19 @@ int sendCommand_getAck(int fd, const char *command)
  *	will log with syslog if an error is encountered.
  *
  */
-MYSQL_ROW* getRowFromSQL(MYSQL *sql_con, const char *query)
+int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 {
-	int num_fields;
+	int num_rows;
 	MYSQL_ROW row;
 	MYSQL_RES *result;
+	int *ingred;
 	
-	if (mysql_query(con, query)) {      
+	if (mysql_query(sql_con, query)) {      
     	sylsog(LOG_INFO, "Unable to query SQL with string: %s", query);
     	return NULL;
 	}
 
-	result = mysql_store_result(con);
+	result = mysql_store_result(sql_con);
   
   	if (result == NULL) {
   		mysql_free_result(result);
@@ -335,9 +361,10 @@ MYSQL_ROW* getRowFromSQL(MYSQL *sql_con, const char *query)
     	return NULL;
  	}
 
-  	num_fields = mysql_num_fields(result);
+  	num_rows = mysql_num_rows(result);
 
-  	if (num_fields != 1)
+
+  	if (num_rows != 1)
   	{
   		syslog(LOG_INFO, "Invalid number of rows returned for query: %s", query);
   		return NULL:	
@@ -345,5 +372,14 @@ MYSQL_ROW* getRowFromSQL(MYSQL *sql_con, const char *query)
 
   	row = mysql_fetch_row(result);
   	mysql_free_result(result);
-  	return row;
+
+	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
+  	
+  	for (int i = 0; i < NUM_INGREDIENTS; i++)
+  	{
+  		ingred[i] = row[i];
+  	}
+  	
+
+  	return ingred;
 }
