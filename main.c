@@ -397,10 +397,11 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	mysql_free_result(result);
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
-  	
+  	int temp;
   	for (i = 0; i < NUM_INGREDIENTS; i++)
   	{
-  		ingred[i] = row[i];
+  		temp = atoi(row[i]);
+  		ingred[i] = temp;
   	}
   	
 
