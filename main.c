@@ -578,13 +578,13 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	if (timePassed < 1)
 	{
 		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
-		continue;
+		return NULL;
 	} else if(timePassed > MAX_TIME_RESERVED) 
 	{
 		syslog(LOG_INFO, "Reservation time expired. skipping...");
-		continue;
+		return NULL;
 	}
-	syslog("order not expired. will dispense.");
+	syslog(LOG_INFO, "order not expired. will dispense.");
 
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
