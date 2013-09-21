@@ -76,6 +76,7 @@
 
 #define BARCODE_LENGTH 50
 #define NUM_INGREDIENTS 6
+#define MAX_SECONDS_RESERVED 600 // 10 minutes
 
 struct settings {
 	char dbName[100];
@@ -579,7 +580,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	{
 		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
 		return NULL;
-	} else if(timePassed > MAX_TIME_RESERVED) 
+	} else if(timePassed > MAX_SECONDS_RESERVED) 
 	{
 		syslog(LOG_INFO, "Reservation time expired. skipping...");
 		return NULL;
