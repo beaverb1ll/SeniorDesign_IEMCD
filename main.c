@@ -478,7 +478,7 @@ int sendCommand_getAck(int fd, const char *command)
 		return 1;
 	}
 
-	switch (buffer[1]) 
+	switch (buffer[0]) 
 	{
 		case 'f':
 			// fall through
