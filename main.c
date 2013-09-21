@@ -574,7 +574,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	// verify time hasn't expired
 	currentTime = time(NULL);
 	orderTime = atoi(row[NUM_INGREDIENTS+1]);
-	timePassed = difftime(currentTime, orderTime)
+	timePassed = difftime(currentTime, orderTime);
 	if (timePassed < 1)
 	{
 		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
