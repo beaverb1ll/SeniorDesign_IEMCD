@@ -468,6 +468,9 @@ int sendCommand_getAck(int fd, const char *command)
 
 	write (fd, command, sizeof(command));
 	syslog(LOG_INFO, "sending command to CB: %s", command);
+	// clear receive buffer
+	tcflush(fd, TCIFLUSH);
+	
 	// wait for response
 	numRead = read (fd, buffer, sizeof(buffer));
 	buffer[numRead] = '\0';
