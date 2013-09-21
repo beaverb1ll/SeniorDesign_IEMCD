@@ -223,7 +223,7 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 {
 	char barcode[BARCODE_LENGTH + 1];
-	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp FROM orderTable WHERE orderID=";
+	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, orderTime FROM orderTable WHERE orderID=";
 	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
 	char queryString[200];
 	int *ingredients, numRead;
