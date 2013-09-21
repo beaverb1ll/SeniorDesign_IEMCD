@@ -548,15 +548,25 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	row = mysql_fetch_row(result);
   	mysql_free_result(result);
 
-	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
+  	// ========= DEBUG =====================
+  	int numFields = mysql_num_fields(result);
+  	int ii;
+  	for( ii=0; ii < numFields; ii++)
+  	{
+    	syslog(LOG_INFO, "%d : %s",ii, row[ii] ? row[ii] : "NULL");  // Not NULL then print
+    }
+
+
+  	// ======== END DEBUG ==================
 
 	// verify drink has not been picked up yet.
-	if(strcmp("true", ingred[NUM_INGREDIENTS]))
+	if(!strcmp("true", ingred[NUM_INGREDIENTS]))
 	{
 		syslog(LOG_INFO, "Drink already picked up");
 		return NULL;
 	}
 
+	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
 	// store ingredients from row data
   	for (i = 0; i < NUM_INGREDIENTS; i++)
   	{
