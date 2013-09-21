@@ -561,7 +561,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
    	mysql_free_result(result);
 	// verify drink has not been picked up yet.
-	if(!strcmp("true", ingred[NUM_INGREDIENTS]))
+	if(!strcmp("true", row[NUM_INGREDIENTS]))
 	{
 		syslog(LOG_INFO, "Drink already picked up");
 		return NULL;
