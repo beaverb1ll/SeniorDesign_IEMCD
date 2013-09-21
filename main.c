@@ -85,7 +85,7 @@ struct settings {
 	char barcodeDevice[];
 	int cbBaud;
 	int barcodeBaud;
-	int barcodeLength
+	int barcodeLength;
 };
 
 int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt);
@@ -97,7 +97,7 @@ int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
 struct settings* parseArgs(int argc, char const *argv[]);
-int baudToInt(cont char *bRate);
+int baudToInt(const char *bRate);
 
 int main(int argc, char const *argv[])
 {
@@ -303,7 +303,7 @@ struct settings* parseArgs(int argc, char const *argv[])
     			break;
 
     		case 'p': // password
-    			allSettings->dbPasswd
+    			allSettings->dbPasswd;
     			break;
 
     		case 'd': // dbName
@@ -338,7 +338,7 @@ struct settings* parseArgs(int argc, char const *argv[])
 	return allSettings;
 }
 
-int baudToInt(cont char *bRate)
+int baudToInt(const char *bRate)
 {
 	if(!strcmp(bRate, "B38400"))
 		return 17;
