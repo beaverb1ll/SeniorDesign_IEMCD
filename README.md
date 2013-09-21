@@ -2,13 +2,19 @@
 This application listens on the specified serial tty device for a barcode to
 come in. When a barcode is accepted, the SQL database will be queried and the 
 drink ingredients are sent to the Control Board through the CB tty device.
-Upon successful dispensing, the SQL database will be updated.
+Upon successful dispensing, the SQL database will be updated. Program logging 
+is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 
 ### Compile Instructions
-make
+```bash
+    make
+```
 
 ### Run Instructions
-./iemcd -u root -p password -d new_schema -c /dev/ttyS0 -b /dev/ttyS1 -r B38400 -s B38400
+```bash
+    ./iemcd -u root -p password -d new_schema -c /dev/ttyS0 -b /dev/ttyS1 -r B38400 -s B38400
+```
+
 
 -u :: database username
 -p :: database user's password
