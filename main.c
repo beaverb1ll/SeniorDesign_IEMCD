@@ -222,7 +222,7 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 {
 	char barcode[BARCODE_LENGTH + 1];
-	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE orderID=";
+	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp FROM orderTable WHERE orderID=";
 	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
 	char queryString[200];
 	int *ingredients, numRead;
@@ -530,8 +530,8 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
 	result = mysql_store_result(sql_con);
   
-  	if (result == NULL) {
-  		mysql_free_result(result);
+  	if (result == NULL) 
+  	{
     	syslog(LOG_INFO, "Unable to get result from SQL query: %s", query);
     	return NULL;
  	}
@@ -549,11 +549,18 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	mysql_free_result(result);
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
-  	int temp;
+
+	// verify drink has not been picked up yet.
+	if(strcmp("true", ingred[NUM_INGREDIENTS]))
+	{
+		syslog(LOG_INFO, "Drink already picked up");
+		return NULL;
+	}
+
+	// store ingredients from row data
   	for (i = 0; i < NUM_INGREDIENTS; i++)
   	{
-  		temp = atoi(row[i]);
-  		ingred[i] = temp;
+  		ingred[i] = atoi(row[i]);;
   	}
   	
 
