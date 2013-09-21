@@ -15,6 +15,21 @@
 
 
 
+/*CREATE  TABLE `new_schema`.`new_table` (
+  `id` INT NOT NULL ,
+  `orderID` VARCHAR(45) NULL ,
+  `orderTime` DATETIME NULL ,
+  `pickupTime` DATETIME NULL ,
+  `pickedUp` VARCHAR(45) NULL ,
+  `Ing0` INT NULL ,
+  `Ing1` INT NULL ,
+  `Ing2` INT NULL ,
+  `Ing3` INT NULL ,
+  `Ing4` INT NULL ,
+  `Ing5` INT NULL ,
+  PRIMARY KEY (`id`) );
+*/
+
 /*
 
 	SQL Schema Used:
@@ -30,7 +45,10 @@
 		Integer Ing3,
 		Integer Ing4,
 		Integer Ing5
+*/
 
+/*
+	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <barcode tty device name> -rc <baudRate> -rb <baudRate>
 
 
 
@@ -59,6 +77,17 @@
 #define BARCODE_LENGTH 50
 #define NUM_INGREDIENTS 6
 
+struct settings {
+	char dbName[];
+	char dbUsername[];
+	char dbPasswd[];
+	char cbDevice[];
+	char barcodeDevice[];
+	int cbBaud;
+	int barcodeBaud;
+	int barcodeLength
+};
+
 int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int block_numChars, int block_timeout);
@@ -67,24 +96,22 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
-int parseArgs(int argc, char const *argv[]);
-
+struct settings* parseArgs(int argc, char const *argv[]);
+int baudToInt(cont char *bRate);
 
 int main(int argc, char const *argv[])
 {
 	int fd_CB, fd_barcode;
 	MYSQL *con_SQL;
+	struct settings *currentSettings;
 
 	openlog("IEMCD", LOG_PID|LOG_CONS, LOG_USER);
     syslog(LOG_INFO, "Daemon Started.\n");
 
-	parseArgs(argc, argv);
-
-	fd_CB = openSerial("/dev/ttyS0", B38400, 0, 1);
-
-	fd_barcode = openSerial("/dev/ttyS1", B38400, 0, BARCODE_LENGTH);
-
-	con_SQL = openSQL("root", "password", "DBName");
+	currentSettings = parseArgs(argc, argv);
+	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 1);
+	fd_barcode = openSerial(currentSettings->barcodeDevice, currentSettings->barcodeBaud, 0, BARCODE_LENGTH);
+	con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
 
 	readBarcodes(fd_CB, fd_barcode, con_SQL);
 
@@ -246,9 +273,121 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 	return 0;
 }
 
-int parseArgs(int argc, char const *argv[])
+struct settings* parseArgs(int argc, char const *argv[])
 {
+	struct settings* allSettings;
+	int temp;
+
+	allSettings = malloc(sizeof(struct settings));
+	if (allSettings == NULL)
+	{
+		syslog(LOG_INFO, "Unable to create settings struct. Exiting...");
+		exit(1);
+	}
+
+	// strcpy(allSettings->dbName, "orderTable");
+	// strcpy(allSettings->dbUsername, "root");
+	// strcpy(allSettings->dbPasswd, "password");
+	// strcpy(allSettings->cbDevice, "/dev/ttyS0");
+	// strcpy(allSettings->barcodeDevice, "/dev/ttyS1");
+	// allSettings->cbBaud = 17;
+	// allSettings->barcodeBaud = 17;
+//	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <barcode tty device name> -r <baudRate> -s <baudRate>
+
+	while ((opt = getopt(argc, argv, "u:p:d:c:b:r:s:")) != -1)
+	{
+	    switch(opt)
+	    {
+	    	case 'u': // username
+    			allSettings->dbUsername = optarg;
+    			break;
+
+    		case 'p': // password
+    			allSettings->dbPasswd
+    			break;
+
+    		case 'd': // dbName
+				allSettings->dbName = optarg;
+    			break;
+
+    		case 'c': // CB tty device
+    			allSettings->cbDevice = optarg;
+    			break;
+
+	   		case 'b': // Barcode tty device
+	   			allSettings->barcodeDevice = optarg;
+    			break;
+
+    		case 'r': // CB Baud
+    			allSettings->cbBaud = baudToInt(optarg);
+    			break;
+
+    		case 's': // Barcode Baud
+    			allSettings->barcodeBaud = baudToInt(optarg);
+    			break;
+   			case '?':
+   				syslog(LOG_INFO, "Invalid startup argument: %c. Exiting...", optopt);
+   				exit(1);
+   				break;
+	    }
+	}
+
+
+
+
+	return allSettings;
+}
+
+int baudToInt(cont char *bRate)
+{
+	if(!strcmp(bRate, "B38400"))
+		return 17;
+	else if (!strcmp(bRate, "B19200"))
+		return 16;
+	else if (!strcmp(bRate, "B9600"))
+		return 15;
+	else if (!strcmp(bRate, "B4800"))
+		return 14;
+	else if (!strcmp(bRate, "B2400"))
+		return 13;
+	else if (!strcmp(bRate, "B1800"))
+		return 12;
+	else if (!strcmp(bRate, "B1200"))
+		return 11;
+	else if (!strcmp(bRate, "B600"))
+		return 10;
+	else if (!strcmp(bRate, "B300"))
+		return 7;
+	else if (!strcmp(bRate, "B200"))
+		return 6;
+	else if (!strcmp(bRate, "B150"))
+		return 5;
+	else if (!strcmp(bRate, "B134"))
+		return 4;
+	else if (!strcmp(bRate, "B110"))
+		return 3;
+	else if (!strcmp(bRate, "B75"))
+		return 2;
+	else if (!strcmp(bRate, "B50"))
+		return 1;
+
 	return 0;
+// B0	0000000		/* hang up */
+// B50	0000001
+// B75	0000002
+// B110	0000003
+// #define  B134	0000004
+// #define  B150	0000005
+// #define  B200	0000006
+// #define  B300	0000007
+// #define  B600	0000010
+// #define  B1200	0000011
+// #define  B1800	0000012
+// #define  B2400	0000013
+// #define  B4800	0000014
+// #define  B9600	0000015
+// #define  B19200	0000016
+// #define  B38400	0000017
 }
 
 /*
