@@ -470,7 +470,7 @@ int sendCommand_getAck(int fd, const char *command)
 	syslog(LOG_INFO, "sending command to CB: %s", command);
 	// clear receive buffer
 	tcflush(fd, TCIFLUSH);
-	
+
 	// wait for response
 	numRead = read (fd, buffer, sizeof(buffer));
 	buffer[numRead] = '\0';
@@ -525,6 +525,8 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	MYSQL_ROW row;
 	MYSQL_RES *result;
 	int *ingred;
+	time_t currentTime, orderTime;
+	double timePassed;
 	
 	if (mysql_query(sql_con, query)) {      
     	syslog(LOG_INFO, "Unable to query SQL with string: %s", query);
@@ -558,8 +560,6 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	{
     	syslog(LOG_INFO, "%d : %s",ii, row[ii] ? row[ii] : "NULL");  // Not NULL then print
     }
-
-
   	// ======== END DEBUG ==================
 
    	mysql_free_result(result);
@@ -569,6 +569,23 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 		syslog(LOG_INFO, "Drink already picked up");
 		return NULL;
 	}
+	syslog(LOG_INFO, "Drink has not been picked up");
+
+	// verify time hasn't expired
+	currentTime = time(NULL);
+	orderTime = atoi(row[NUM_INGREDIENTS+1]);
+	timePassed = difftime(currentTime, orderTime)
+	if (timePassed < 1)
+	{
+		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
+		continue;
+	} else if(timePassed > MAX_TIME_RESERVED) 
+	{
+		syslog(LOG_INFO, "Reservation time expired. skipping...");
+		continue;
+	}
+	syslog("order not expired. will dispense.");
+
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
 	// store ingredients from row data
