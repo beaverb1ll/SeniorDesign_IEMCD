@@ -78,11 +78,11 @@
 #define NUM_INGREDIENTS 6
 
 struct settings {
-	char dbName[];
-	char dbUsername[];
-	char dbPasswd[];
-	char cbDevice[];
-	char barcodeDevice[];
+	char dbName[100];
+	char dbUsername[100];
+	char dbPasswd[100];
+	char cbDevice[100];
+	char barcodeDevice[100];
 	int cbBaud;
 	int barcodeBaud;
 	int barcodeLength;
@@ -106,13 +106,16 @@ int main(int argc, char const *argv[])
 	struct settings *currentSettings;
 
 	openlog("IEMCD", LOG_PID|LOG_CONS, LOG_USER);
-    syslog(LOG_INFO, "Daemon Started.\n");
+	syslog(LOG_INFO, "Daemon Started.\n");
 
 	currentSettings = parseArgs(argc, argv);
+	syslog(LOG_INFO, "Finished parsing input arguments.");
 	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 1);
+	syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
 	fd_barcode = openSerial(currentSettings->barcodeDevice, currentSettings->barcodeBaud, 0, BARCODE_LENGTH);
+	syslog(LOG_INFO, "Opened barcode serial device %s", currentSettings->barcodeDevice);
 	con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
-
+	syslog(LOG_INFO, "Opened SQL database %s", currentSettings->dbName);
 	readBarcodes(fd_CB, fd_barcode, con_SQL);
 
 	close(fd_CB);
@@ -128,7 +131,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
     fd = open (ttyName, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
-        syslog(LOG_INFO, "error %d opening %s: %s", errno, ttyName, strerror (errno));
+        syslog(LOG_INFO, "error %d returned while opening serial device %s: %s", errno, ttyName, strerror (errno));
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
@@ -200,14 +203,16 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 
 	MYSQL *con = mysql_init(NULL);
   
-	if (con == NULL) {
-    	syslog(LOG_INFO, "%s  Exiting...\n", mysql_error(con));
-     	exit(1);
+	if (con == NULL)
+	{
+    		syslog(LOG_INFO, "Error in openSQL: %s  Exiting...\n", mysql_error(con));
+     		exit(1);
 	}  
 
-  	if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL) {
-    	syslog(LOG_INFO, "%s  Exiting...\n", mysql_error(con));
-    	mysql_close(con);
+  	if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL) 
+	{
+    		syslog(LOG_INFO, "Error in openSQL: %s  Exiting...\n", mysql_error(con));
+    		mysql_close(con);
   		exit(1); 
   	}
   	return  con;
@@ -236,15 +241,17 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		// construct query string
 		strcpy(queryString, baseSelect);
 		strcat(queryString, barcode);
-
+		syslog(LOG_INFO, "Barcode:%s  Query string: %s", barcode,  queryString);
 		// query sql for barcode
 		ingredients = getIngredFromSQL(con, queryString);
 		if (ingredients == NULL) 
 		{
+			syslog(LOG_INFO, "No ingreds found. Continuing...");
 			// start over if invalid
 			continue;
 		}
 
+		syslog(LOG_INFO, "Ingredients found. Dispensing...");
 
 		// send commands to CB Board
 		if (dispenseDrink(commandsFD, ingredients) != 0)
@@ -264,9 +271,13 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		strcat(queryString, barcode);
 		// update sql
 
-		if (mysql_query(con, queryString)) {      
-    		syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
-    	}
+		if (mysql_query(con, queryString))
+		{      
+    			syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
+    		} else
+		{
+			syslog(LOG_INFO, "Updated SQL.");
+		}
 
     	// do another barcode
 	}
@@ -276,7 +287,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 struct settings* parseArgs(int argc, char const *argv[])
 {
 	struct settings* allSettings;
-	int temp;
+	int temp, opt;
 
 	allSettings = malloc(sizeof(struct settings));
 	if (allSettings == NULL)
@@ -299,23 +310,23 @@ struct settings* parseArgs(int argc, char const *argv[])
 	    switch(opt)
 	    {
 	    	case 'u': // username
-    			allSettings->dbUsername = optarg;
+    			strcpy(allSettings->dbUsername, optarg);
     			break;
 
     		case 'p': // password
-    			allSettings->dbPasswd;
+    			strcpy(allSettings->dbPasswd, optarg);
     			break;
 
     		case 'd': // dbName
-				allSettings->dbName = optarg;
+			strcpy(allSettings->dbName, optarg);
     			break;
 
     		case 'c': // CB tty device
-    			allSettings->cbDevice = optarg;
+    			strcpy(allSettings->cbDevice, optarg);
     			break;
 
 	   		case 'b': // Barcode tty device
-	   			allSettings->barcodeDevice = optarg;
+	   		strcpy(allSettings->barcodeDevice, optarg);
     			break;
 
     		case 'r': // CB Baud
@@ -325,10 +336,10 @@ struct settings* parseArgs(int argc, char const *argv[])
     		case 's': // Barcode Baud
     			allSettings->barcodeBaud = baudToInt(optarg);
     			break;
-   			case '?':
-   				syslog(LOG_INFO, "Invalid startup argument: %c. Exiting...", optopt);
-   				exit(1);
-   				break;
+   		case '?':
+   			syslog(LOG_INFO, "Invalid startup argument: %c. Exiting...", optopt);
+   			exit(1);
+ 			break;
 	    }
 	}
 
@@ -423,6 +434,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 		// append end string
 		strcat(command, endString);
 
+		
 		// send commmand, wait for response
 		if(sendCommand_getAck(cb_fd, command))
 		{
@@ -455,6 +467,7 @@ int sendCommand_getAck(int fd, const char *command)
 	int numRead;
 
 	write (fd, command, sizeof(command));
+	syslog(LOG_INFO, "sending command to CB: %s", command);
 	// wait for response
 	numRead = read (fd, buffer, sizeof(buffer));
 	buffer[numRead] = '\0';
