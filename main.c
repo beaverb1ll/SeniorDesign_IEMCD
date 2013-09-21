@@ -546,7 +546,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	}
 
   	row = mysql_fetch_row(result);
-  	mysql_free_result(result);
+
 
   	// ========= DEBUG =====================
   	int numFields = mysql_num_fields(result);
@@ -559,6 +559,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
   	// ======== END DEBUG ==================
 
+   	mysql_free_result(result);
 	// verify drink has not been picked up yet.
 	if(!strcmp("true", ingred[NUM_INGREDIENTS]))
 	{
