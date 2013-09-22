@@ -28,7 +28,7 @@ all: iemcd
 iemcd: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L/usr/lib64/mysql -L/usr/lib -o "iemcd" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -Wall -L/usr/lib64/mysql -L/usr/lib -o "iemcd" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

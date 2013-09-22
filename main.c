@@ -4,13 +4,13 @@
 	// open serial port
 	// open barcode (serial or usb?) port
 	// open sql database
-	
+
 	// loop
 		// wait for barcode
 		// query sql
 		// 	|   |
 		//  |   |
-		//  |    -> If found, send commands to serial 
+		//  |    -> If found, send commands to serial
 		//   ->  Else continue.
 
 
@@ -35,7 +35,7 @@
 	SQL Schema Used:
 	orderTable ->
 		Integer id,
-		varchar orderID, 
+		varchar orderID,
 		DateTime orderTime,
 		DateTime pickupTime,
 		Bool pickedup,
@@ -54,7 +54,7 @@
 
 
 */
-
+#include <time.h>
 #include <termios.h>
 #include <unistd.h>
 #include <string.h>
@@ -111,12 +111,17 @@ int main(int argc, char const *argv[])
 
 	currentSettings = parseArgs(argc, argv);
 	syslog(LOG_INFO, "Finished parsing input arguments.");
-	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 1);
+
+	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
 	syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
-	fd_barcode = openSerial(currentSettings->barcodeDevice, currentSettings->barcodeBaud, 0, BARCODE_LENGTH);
+
+	fd_barcode = openSerial(currentSettings->barcodeDevice, currentSettings->barcodeBaud, 0, BARCODE_LENGTH); // wait for a complete barcode before trying to do anything with it
 	syslog(LOG_INFO, "Opened barcode serial device %s", currentSettings->barcodeDevice);
+
 	con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
 	syslog(LOG_INFO, "Opened SQL database %s", currentSettings->dbName);
+
+	syslog(LOG_INFO, "Entering main loop");
 	readBarcodes(fd_CB, fd_barcode, con_SQL);
 
 	close(fd_CB);
@@ -125,9 +130,9 @@ int main(int argc, char const *argv[])
 	return 0;
 }
 
-int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt) 
+int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
 {
-    int fd; 
+    int fd;
 
     fd = open (ttyName, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
@@ -199,22 +204,22 @@ void set_blocking (int fd, int block_numChars, int block_timeout)
         }
 }
 
-MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name) 
+MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name)
 {
 
 	MYSQL *con = mysql_init(NULL);
-  
+
 	if (con == NULL)
 	{
     		syslog(LOG_INFO, "Error in openSQL: %s  Exiting...\n", mysql_error(con));
      		exit(1);
-	}  
+	}
 
-  	if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL) 
+  	if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL)
 	{
     		syslog(LOG_INFO, "Error in openSQL: %s  Exiting...\n", mysql_error(con));
     		mysql_close(con);
-  		exit(1); 
+  		exit(1);
   	}
   	return  con;
 }
@@ -232,7 +237,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		// wait for barcode.
 		numRead = read (barcodeFD, barcode, sizeof(barcode));
 		barcode[numRead] = '\0';
-		
+
 		if(numRead < BARCODE_LENGTH)
 		{
 			syslog(LOG_INFO, "Only read %d chars from barcode. Ignoring input", numRead);
@@ -245,7 +250,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		syslog(LOG_INFO, "Barcode:%s  Query string: %s", barcode,  queryString);
 		// query sql for barcode
 		ingredients = getIngredFromSQL(con, queryString);
-		if (ingredients == NULL) 
+		if (ingredients == NULL)
 		{
 			syslog(LOG_INFO, "No ingreds found. Continuing...");
 			// start over if invalid
@@ -273,7 +278,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		// update sql
 
 		if (mysql_query(con, queryString))
-		{      
+		{
     			syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
     		} else
 		{
@@ -411,7 +416,7 @@ int baudToInt(const char *bRate)
  *	- Error: 1
  *
  */
-int dispenseDrink(int cb_fd, int *ingredArray) 
+int dispenseDrink(int cb_fd, int *ingredArray)
 {
 	int i, response;
 	const char *endString = "T";
@@ -435,7 +440,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 		// append end string
 		strcat(command, endString);
 
-		
+
 		// send commmand, wait for response
 		if(sendCommand_getAck(cb_fd, command))
 		{
@@ -458,7 +463,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 
 /*
  *
- * Output: 
+ * Output:
  *	- On success: 0
  *	- On failure: 1
  */
@@ -475,14 +480,14 @@ int sendCommand_getAck(int fd, const char *command)
 	// wait for response
 	numRead = read (fd, buffer, sizeof(buffer));
 	buffer[numRead] = '\0';
-		
+
 	if(numRead < 1)
 	{
 		syslog(LOG_INFO, "Error reading ack from fd");
 		return 1;
 	}
 
-	switch (buffer[0]) 
+	switch (buffer[0])
 	{
 		case 'f':
 			// fall through
@@ -504,19 +509,19 @@ int sendCommand_getAck(int fd, const char *command)
 }
 
 /*
- * Input: 
+ * Input:
  *	- a SQL connection
  *  - a query string
  *
- * Output: 
+ * Output:
  *  - If one row found, pointer to object from query
  *	  Else: NULL
  *
  *
  *
- * This will query the sql database for a anything 
- *	and will return a pointer to the row if only one entry was 
- *	found and will return NULL otherwise. This function 
+ * This will query the sql database for a anything
+ *	and will return a pointer to the row if only one entry was
+ *	found and will return NULL otherwise. This function
  *	will log with syslog if an error is encountered.
  *
  */
@@ -528,15 +533,16 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	int *ingred;
 	time_t currentTime, orderTime;
 	double timePassed;
-	
-	if (mysql_query(sql_con, query)) {      
+//	int orderTime;
+
+	if (mysql_query(sql_con, query)) {
     	syslog(LOG_INFO, "Unable to query SQL with string: %s", query);
     	return NULL;
 	}
 
 	result = mysql_store_result(sql_con);
-  
-  	if (result == NULL) 
+
+  	if (result == NULL)
   	{
     	syslog(LOG_INFO, "Unable to get result from SQL query: %s", query);
     	return NULL;
@@ -563,7 +569,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
     }
   	// ======== END DEBUG ==================
 
-   	mysql_free_result(result);
+
 	// verify drink has not been picked up yet.
 	if(!strcmp("true", row[NUM_INGREDIENTS]))
 	{
@@ -574,13 +580,23 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
 	// verify time hasn't expired
 	currentTime = time(NULL);
-	orderTime = atoi(row[NUM_INGREDIENTS+1]);
+	syslog(LOG_INFO, "currentTime: %d", currentTime);
+
+	char testString[60];
+	strcpy(testString, row[7]);
+	syslog(LOG_INFO, "testString: %s", testString);
+	orderTime = atoi(testString);
+
+	syslog(LOG_INFO, "orderTime: %d", orderTime);
+
 	timePassed = difftime(currentTime, orderTime);
+	syslog(LOG_INFO, "timePassed: %lf", timePassed);
+
 	if (timePassed < 1)
 	{
 		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
 		return NULL;
-	} else if(timePassed > MAX_SECONDS_RESERVED) 
+	} else if(timePassed > MAX_SECONDS_RESERVED)
 	{
 		syslog(LOG_INFO, "Reservation time expired. skipping...");
 		return NULL;
@@ -594,7 +610,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
   	{
   		ingred[i] = atoi(row[i]);;
   	}
-  	
 
+    mysql_free_result(result);
   	return ingred;
 }
