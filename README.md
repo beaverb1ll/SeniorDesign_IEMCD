@@ -40,6 +40,7 @@ orderTable ->
         Integer orderTime,
         Integer pickupTime,
         Bool pickedup,
+	Bool expired,
         Integer Ing0,
         Integer Ing1,
         Integer Ing2,
