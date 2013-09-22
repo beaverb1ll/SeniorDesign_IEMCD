@@ -5,6 +5,9 @@ drink ingredients are sent to the Control Board through the CB tty device.
 Upon successful dispensing, the SQL database will be updated. Program logging 
 is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 
+Packages:
+mysql++-devel mysql-connector-c++-devel
+
 ### Compile Instructions
 ```bash
     make
@@ -32,14 +35,14 @@ The required length of a barcode is currently set to 50 characters long. Valid c
 
 ### SQL Schema
 orderTable ->
-		Integer id,
-		varchar(50) orderID,
-		Integer orderTime,
-		Integer pickupTime,
-		Bool pickedup,
-		Integer Ing0,
-		Integer Ing1,
-		Integer Ing2,
-		Integer Ing3,
-		Integer Ing4,
-		Integer Ing5
+        Integer id,
+        varchar(50) orderID,
+        Integer orderTime,
+        Integer pickupTime,
+        Bool pickedup,
+        Integer Ing0,
+        Integer Ing1,
+        Integer Ing2,
+        Integer Ing3,
+        Integer Ing4,
+        Integer Ing5
