@@ -228,7 +228,7 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 {
 	char barcode[BARCODE_LENGTH + 1];
-	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, orderTime FROM orderTable WHERE orderID=";
+	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=";
 	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
 	char queryString[200];
 	int *ingredients, numRead;
@@ -248,12 +248,12 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		strcpy(queryString, baseSelect);
 		strcat(queryString, barcode);
 		syslog(LOG_INFO, "Barcode:%s  Query string: %s", barcode,  queryString);
+		
 		// query sql for barcode
 		ingredients = getIngredFromSQL(con, queryString);
 		if (ingredients == NULL)
 		{
 			syslog(LOG_INFO, "No ingreds found. Continuing...");
-			// start over if invalid
 			continue;
 		}
 
@@ -275,8 +275,8 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		// create query string
 		strcpy(queryString, baseUpdate);
 		strcat(queryString, barcode);
+		
 		// update sql
-
 		if (mysql_query(con, queryString))
 		{
     			syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
@@ -284,7 +284,6 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		{
 			syslog(LOG_INFO, "Updated SQL.");
 		}
-
     	// do another barcode
 	}
 	return 0;
@@ -301,15 +300,8 @@ struct settings* parseArgs(int argc, char const *argv[])
 		syslog(LOG_INFO, "Unable to create settings struct. Exiting...");
 		exit(1);
 	}
-
-	// strcpy(allSettings->dbName, "orderTable");
-	// strcpy(allSettings->dbUsername, "root");
-	// strcpy(allSettings->dbPasswd, "password");
-	// strcpy(allSettings->cbDevice, "/dev/ttyS0");
-	// strcpy(allSettings->barcodeDevice, "/dev/ttyS1");
-	// allSettings->cbBaud = 17;
-	// allSettings->barcodeBaud = 17;
-//	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <barcode tty device name> -r <baudRate> -s <baudRate>
+	
+	//	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <barcode tty device name> -r <baudRate> -s <baudRate>
 
 	while ((opt = getopt(argc, argv, "u:p:d:c:b:r:s:")) != -1)
 	{
@@ -342,16 +334,13 @@ struct settings* parseArgs(int argc, char const *argv[])
     		case 's': // Barcode Baud
     			allSettings->barcodeBaud = baudToInt(optarg);
     			break;
+    			
    		case '?':
    			syslog(LOG_INFO, "Invalid startup argument: %c. Exiting...", optopt);
    			exit(1);
  			break;
 	    }
 	}
-
-
-
-
 	return allSettings;
 }
 
@@ -393,18 +382,18 @@ int baudToInt(const char *bRate)
 // B50	0000001
 // B75	0000002
 // B110	0000003
-// #define  B134	0000004
-// #define  B150	0000005
-// #define  B200	0000006
-// #define  B300	0000007
-// #define  B600	0000010
-// #define  B1200	0000011
-// #define  B1800	0000012
-// #define  B2400	0000013
-// #define  B4800	0000014
-// #define  B9600	0000015
-// #define  B19200	0000016
-// #define  B38400	0000017
+// B134	0000004
+// B150	0000005
+// B200	0000006
+// B300	0000007
+// B600	0000010
+// B1200	0000011
+// B1800	0000012
+// B2400	0000013
+// B4800	0000014
+// B9600	0000015
+// B19200	0000016
+// B38400	0000017
 }
 
 /*
@@ -569,6 +558,14 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
     }
   	// ======== END DEBUG ==================
 
+	// verify time hasn't expired
+	if (!strcmp("true", row[NUM_INGREDIENTS+1]))
+	{
+		syslog(LOG_INFO, "Drink order expired. skipping...");
+		return NULL;
+	}
+	syslog(LOG_INFO, "Drink order not expired. Continuing... ");
+	
 
 	// verify drink has not been picked up yet.
 	if(!strcmp("true", row[NUM_INGREDIENTS]))
@@ -577,32 +574,6 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 		return NULL;
 	}
 	syslog(LOG_INFO, "Drink has not been picked up");
-
-	// verify time hasn't expired
-	currentTime = time(NULL);
-	syslog(LOG_INFO, "currentTime: %d", currentTime);
-
-	char testString[60];
-	strcpy(testString, row[7]);
-	syslog(LOG_INFO, "testString: %s", testString);
-	orderTime = atoi(testString);
-
-	syslog(LOG_INFO, "orderTime: %d", orderTime);
-
-	timePassed = difftime(currentTime, orderTime);
-	syslog(LOG_INFO, "timePassed: %lf", timePassed);
-
-	if (timePassed < 1)
-	{
-		syslog(LOG_INFO, "Invalid time difference of: %lf. skipping...", timePassed);
-		return NULL;
-	} else if(timePassed > MAX_SECONDS_RESERVED)
-	{
-		syslog(LOG_INFO, "Reservation time expired. skipping...");
-		return NULL;
-	}
-	syslog(LOG_INFO, "order not expired. will dispense.");
-
 
 	ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
 	// store ingredients from row data
