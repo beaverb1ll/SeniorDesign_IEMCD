@@ -99,6 +99,10 @@ int sendCommand_getAck(int fd, const char *command);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
 struct settings* parseArgs(int argc, char const *argv[]);
 int baudToInt(const char *bRate);
+int daemonize(void);
+void sigINT_handler(int signum);
+void sigTERM_handler(int signum);
+void logInputArgs(struct settings *settings);
 
 int main(int argc, char const *argv[])
 {
@@ -106,11 +110,13 @@ int main(int argc, char const *argv[])
 	MYSQL *con_SQL;
 	struct settings *currentSettings;
 
-	openlog("IEMCD", LOG_PID|LOG_CONS, LOG_USER);
-	syslog(LOG_INFO, "Daemon Started.\n");
+	daemonize();
 
 	currentSettings = parseArgs(argc, argv);
-	syslog(LOG_INFO, "Finished parsing input arguments.");
+	syslog(LOG_INFO, "Finished parsing input arguments: ");
+
+	logInputArgs(currentSettings);
+
 
 	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
 	syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
@@ -584,4 +590,80 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
     mysql_free_result(result);
   	return ingred;
+}
+
+int daemonize(void) {
+	/* Our process ID and Session ID */
+    pid_t pid, sid;
+    
+    /* Fork off the parent process */
+    pid = fork();
+    if (pid < 0) {
+        exit(EXIT_FAILURE);
+    }
+    /* If we got a good PID, then
+       we can exit the parent process. */
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Change the file mode mask */
+    umask(0);
+            
+    /* Open any logs here */ 
+     openlog("iemcd", LOG_PID|LOG_CONS, LOG_USER);
+     syslog(LOG_INFO, "Daemon Started.\n");
+            
+    /* Create a new SID for the child process */
+    sid = setsid();
+    if (sid < 0) {
+        /* Log the failure */
+        syslog(LOG_INFO, "Unalbe to create new SID. Exiting.");
+        exit(EXIT_FAILURE);
+    }
+    syslog(LOG_INFO, "finished forking");
+    
+    /* Change the current working directory */
+    if ((chdir("/")) < 0) {
+        /* Log the failure */
+        syslog(LOG_INFO, "Unable to change working directory. Exiting");
+        exit(EXIT_FAILURE);
+    }
+    
+    /* Close out the standard file descriptors */
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+    
+    /* Daemon-specific initialization goes here */
+    
+    /* Register Signal Handlers*/
+    signal(SIGTERM, sigTERM_handler);
+    signal(SIGINT, sigINT_handler);
+	return 0;
+ }
+ 
+void sigINT_handler(int signum) 
+{
+    syslog (LOG_INFO, "Caught SIGINT. Exiting.");
+    exit(0);
+
+}
+
+void sigTERM_handler(int signum) 
+{
+    syslog(LOG_INFO, "Caught SIGTERM. Exiting.");  
+    exit(0);
+}
+
+void logInputArgs(struct settings *settings)
+{
+	syslog(LOG_INFO, "   DB Name    :: %s", dbName);
+	syslog(LOG_INFO, "   DB User    :: %s", dbUsername);
+	syslog(LOG_INFO, "   DB Passwod :: %s", dbPasswd);
+	syslog(LOG_INFO, "   CB Device  :: %s", cbDevice);
+	syslog(LOG_INFO, "   CB Baud    :: %d", cbBaud);
+	syslog(LOG_INFO, "   Bar Device :: %s", barcodeDevice);
+	syslog(LOG_INFO, "   Bar Baud   :: %d", barcodeBaud);
+	syslog(LOG_INFO, "   Bar Length :: %d", barcodeLength);
 }
