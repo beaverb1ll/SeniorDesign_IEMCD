@@ -300,7 +300,7 @@ struct settings* parseArgs(int argc, char const *argv[])
 	struct settings* allSettings;
 	int temp, opt;
 
-	allSettings = malloc(sizeof(struct settings));
+	allSettings = calloc(sizeof(struct settings));
 	if (allSettings == NULL)
 	{
 		syslog(LOG_INFO, "Unable to create settings struct. Exiting...");
@@ -658,12 +658,12 @@ void sigTERM_handler(int signum)
 
 void logInputArgs(struct settings *settings)
 {
-	syslog(LOG_INFO, "   DB Name    :: %s", dbName);
-	syslog(LOG_INFO, "   DB User    :: %s", dbUsername);
-	syslog(LOG_INFO, "   DB Passwod :: %s", dbPasswd);
-	syslog(LOG_INFO, "   CB Device  :: %s", cbDevice);
-	syslog(LOG_INFO, "   CB Baud    :: %d", cbBaud);
-	syslog(LOG_INFO, "   Bar Device :: %s", barcodeDevice);
-	syslog(LOG_INFO, "   Bar Baud   :: %d", barcodeBaud);
-	syslog(LOG_INFO, "   Bar Length :: %d", barcodeLength);
+	syslog(LOG_INFO, "   DB Name    :: %s", settings->dbName);
+	syslog(LOG_INFO, "   DB User    :: %s", settings->dbUsername);
+	syslog(LOG_INFO, "   DB Passwod :: %s", settings->dbPasswd);
+	syslog(LOG_INFO, "   CB Device  :: %s", settings->cbDevice);
+	syslog(LOG_INFO, "   CB Baud    :: %d", settings->cbBaud);
+	syslog(LOG_INFO, "   Bar Device :: %s", settings->barcodeDevice);
+	syslog(LOG_INFO, "   Bar Baud   :: %d", settings->barcodeBaud);
+	syslog(LOG_INFO, "   Bar Length :: %d", settings->barcodeLength);
 }
