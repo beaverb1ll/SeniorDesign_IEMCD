@@ -15,35 +15,71 @@ mysql++-devel mysql-connector-c++-devel
 
 ### Run Instructions
 ```bash
-    ./iemcd -u root -p password -d new_schema -c /dev/ttyS0 -b /dev/ttyS1 -r B38400 -s B38400
+    ./iemcd -u root -p password -d SD -c /dev/ttyUSB0 -b B38400 -s 4608 -v 1504
 ```
 ### Command Arguments
 -u :: database username
 -p :: database user's password
 -d :: database name
 -c :: Control Board tty device
--b :: barcode tty device
--r :: Control Board tty device baud rate
--s :: barcode tty device baud rate
+-b :: Control Board tty device baud rate
+-v :: USB Vendor ID
+-s :: USB Product ID
 
 ### Sample Barcode
-The required length of a barcode is currently set to 50 characters long. Valid characters are 0-9 inclusively.
+The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 inclusively.
 
 ```bash
-12345678901234567890123456789012345678901234567890
+1234567890123456789012345678901234567890
 ```
 
-### SQL Schema
-orderTable ->
-        Integer id,
-        varchar(50) orderID,
-        Integer orderTime,
-        Integer pickupTime,
-        Bool pickedup,
-	Bool expired,
-        Integer Ing0,
-        Integer Ing1,
-        Integer Ing2,
-        Integer Ing3,
-        Integer Ing4,
-        Integer Ing5
+### SQL INSERT
+```bash
+INSERT INTO `SD`.`orderTable`
+(`id`,
+`orderID`,
+`orderTime`,
+`pickupTime`,
+`pickedUp`,
+`Ing0`,
+`Ing1`,
+`Ing2`,
+`Ing3`,
+`Ing4`,
+`Ing5`,
+`expired`)
+VALUES
+(
+15,
+0123456789012345678901234567890123456789,
+100,
+0,
+false,
+10,
+11,
+12,
+13,
+14,
+15,
+false
+);
+```
+
+### SQL CREATE
+```bash
+CREATE TABLE `orderTable` (
+  `id` int(11) NOT NULL,
+  `orderID` varchar(50) DEFAULT NULL,
+  `orderTime` int(11) DEFAULT '0',
+  `pickupTime` int(11) DEFAULT '0',
+  `pickedUp` varchar(10) DEFAULT 'false',
+  `Ing0` int(11) DEFAULT NULL,
+  `Ing1` int(11) DEFAULT NULL,
+  `Ing2` int(11) DEFAULT NULL,
+  `Ing3` int(11) DEFAULT NULL,
+  `Ing4` int(11) DEFAULT NULL,
+  `Ing5` int(11) DEFAULT NULL,
+  `expired` varchar(10) DEFAULT 'false',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1$$
+```
