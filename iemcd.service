@@ -1,0 +1,10 @@
+Description=Improved Embedded Master Control Daemon
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/iemcd.conf
+ExecStart=/usr/bin/iemcd $IEMCD_ARGS
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
