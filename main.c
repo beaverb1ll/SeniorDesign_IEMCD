@@ -70,6 +70,8 @@
 #include <signal.h>
 #include <mysql/mysql.h>
 
+#include "hidapi.h"
+
 
 #define TRUE 1
 #define FALSE 0
@@ -78,14 +80,17 @@
 #define NUM_INGREDIENTS 6
 #define MAX_SECONDS_RESERVED 600 // 10 minutes
 
+#define VENDOR_ID 0x05e0  
+#define PRODUCT_ID 0x1200 
+
 struct settings {
 	char dbName[100];
 	char dbUsername[100];
 	char dbPasswd[100];
 	char cbDevice[100];
-	char barcodeDevice[100];
+	int barcode_PID;
+	int barcode_VID;
 	int cbBaud;
-	int barcodeBaud;
 	int barcodeLength;
 };
 
@@ -93,11 +98,14 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int block_numChars, int block_timeout);
 MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name);
-int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con);
+int getBarcodeUSB(hid_device* handle, char *barcode);
+hid_device* openUSB(int vID, int pID);
+char convertUSB(unsigned char *inputArray);
+int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
-struct settings* parseArgs(int argc, char const *argv[]);
+struct settings* parseArgs(int argc, char* const* argv);
 int baudToInt(const char *bRate);
 int daemonize(void);
 void sigINT_handler(int signum);
@@ -106,32 +114,31 @@ void logInputArgs(struct settings *settings);
 
 int main(int argc, char const *argv[])
 {
-	int fd_CB, fd_barcode;
+	int fd_CB;
+	hid_device* barcodeUSBDevice;
 	MYSQL *con_SQL;
 	struct settings *currentSettings;
 
 	daemonize();
 
-	currentSettings = parseArgs(argc, argv);
+	currentSettings = parseArgs(argc, (char* const*)argv);
 	syslog(LOG_INFO, "Finished parsing input arguments: ");
 
 	logInputArgs(currentSettings);
 
-
 	fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
 	syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
 
-	fd_barcode = openSerial(currentSettings->barcodeDevice, currentSettings->barcodeBaud, 0, BARCODE_LENGTH); // wait for a complete barcode before trying to do anything with it
-	syslog(LOG_INFO, "Opened barcode serial device %s", currentSettings->barcodeDevice);
+	barcodeUSBDevice = openUSB(currentSettings->barcode_PID, currentSettings->barcode_VID);
+	syslog(LOG_INFO, "Opened barcode USB device");
 
 	con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
 	syslog(LOG_INFO, "Opened SQL database %s", currentSettings->dbName);
 
 	syslog(LOG_INFO, "Entering main loop");
-	readBarcodes(fd_CB, fd_barcode, con_SQL);
+	doWork(fd_CB, barcodeUSBDevice, con_SQL);
 
 	close(fd_CB);
-	close(fd_barcode);
 	mysql_close(con_SQL);
 	return 0;
 }
@@ -230,23 +237,121 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
   	return  con;
 }
 
+int getBarcodeUSB(hid_device* handle, char *barcode) 
+{
 
-int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
+	// read from usb device with a blocking configuration untill the first is recievd. 
+	// after first is recieved, either:
+	//	 1) continue reading untill BARCODE_LENGTH is read, then return the barcode to caller
+	//   2) if timeout occurs, start over.
+
+
+	int status, i = 0;
+	char tempChar;
+	unsigned char buf[9];
+
+	// read without timeout
+	status = hid_read(handle, buf, sizeof(buf));
+	if(status < 1) {
+		syslog(LOG_INFO, "ERROR: Unable to read from USB in getBarcodeUSB. Exiting...");
+		exit(1);
+	}
+	tempChar = convertUSB(buf);
+	if (tempChar == 0)
+	{
+		/// uh oh, invalid char, close and try again.
+		syslog(LOG_INFO, "Bad character read, skipping barcode scan");
+		return 1;
+	}
+
+	// if its here, its valid so store the incoming character
+	barcode[0] = tempChar;
+	i = 1;
+
+	// read the rest of the barcode
+	while (i < BARCODE_LENGTH)
+	{
+		status = hid_read_timeout(handle, buf, sizeof(buf), 500);
+		if (status < 1) // error happened when reading
+		{
+			syslog(LOG_INFO, "ERROR: Unable to read from USB in getBarcodeUSB loop. Exiting...");
+			exit(1);
+		}
+
+		if (status == 0) // timout exipred, throw away barcode
+		{
+			return 1;
+		}
+		tempChar = convertUSB(buf);
+		if (tempChar == 0)
+		{
+			/// uh oh, invalid char, close and try again.
+			syslog(LOG_INFO, "reserved character read, skipping character");
+			continue;
+		}
+
+		// if its here, got a good character so store the incoming character
+		barcode[i] = tempChar;
+		i++;
+	}
+	barcode[i] = '\0';
+	return 0;
+}
+
+char convertUSB(unsigned char *inputArray)
+{
+	int input = inputArray[2];
+	if (input == 0)
+	{
+		return 0;
+	}
+	if (input == 39)  // this is a zero from the barcode scanner
+	{
+		return '0';
+	}
+
+	if (input > 29 && input < 39) // this is a 1-9 from the barcode scanner
+	{
+		return input + 19;
+	}
+
+	return 0;
+}
+
+hid_device* openUSB(int vID, int pID)
+{
+	hid_device *handle;
+
+	handle = hid_open(vID, pID, NULL);
+    if (!handle) {
+        printf("Unable to open device. Exiting...");
+        exit(1);
+    }
+
+    // set as blocking
+    hid_set_nonblocking(handle, 0);
+    return handle;
+}
+
+
+int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 {
 	char barcode[BARCODE_LENGTH + 1];
 	char *baseSelect = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=";
 	char *baseUpdate = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
 	char queryString[200];
-	int *ingredients, numRead;
+	int *ingredients, barcodeValid;
 
 	while (TRUE) {
 		// wait for barcode.
-		numRead = read (barcodeFD, barcode, sizeof(barcode));
-		barcode[numRead] = '\0';
 
-		if(numRead < BARCODE_LENGTH)
+		// read from usbBarcodeScanner
+		// numRead = read (barcodeFD, barcode, sizeof(barcode));
+		barcodeValid = getBarcodeUSB(barcodeHandle, barcode);
+
+		if(barcodeValid == 1)
 		{
-			syslog(LOG_INFO, "Only read %d chars from barcode. Ignoring input", numRead);
+			syslog(LOG_INFO, "Valid barcode not received. Ignoring input");
 			continue;
 		}
 
@@ -286,7 +391,7 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 		if (mysql_query(con, queryString))
 		{
     			syslog(LOG_INFO, "Unable to update SQL with string: %s", queryString);
-    		} else
+    	} else
 		{
 			syslog(LOG_INFO, "Updated SQL.");
 		}
@@ -295,21 +400,36 @@ int readBarcodes(int commandsFD, int barcodeFD, MYSQL *con)
 	return 0;
 }
 
-struct settings* parseArgs(int argc, char const *argv[])
+struct settings* parseArgs(int argc, char* const* argv)
 {
 	struct settings* allSettings;
-	int temp, opt;
+	int opt;
 
-	allSettings = calloc(sizeof(struct settings));
+	allSettings = (struct settings*)calloc(1, sizeof(struct settings));
 	if (allSettings == NULL)
 	{
 		syslog(LOG_INFO, "Unable to create settings struct. Exiting...");
 		exit(1);
 	}
 	
-	//	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <barcode tty device name> -r <baudRate> -s <baudRate>
+	//	-u <username> -p <password> -d <databaseName> -c <control board tty device name> -b <baudRate> -v <USB Vender ID> -s <USB Product ID> 
+	/*
 
-	while ((opt = getopt(argc, argv, "u:p:d:c:b:r:s:")) != -1)
+	struct settings {
+	char dbName[100];
+	char dbUsername[100];
+	char dbPasswd[100];
+	char cbDevice[100];
+	int barcode_PID;
+	int barcode_VID;
+	int cbBaud;
+	int barcodeLength;
+	};
+
+	*/
+
+
+	while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:")) != -1)
 	{
 	    switch(opt)
 	    {
@@ -325,24 +445,24 @@ struct settings* parseArgs(int argc, char const *argv[])
 			strcpy(allSettings->dbName, optarg);
     			break;
 
-    		case 'c': // CB tty device
+    		case 'c': // CB tty device name
     			strcpy(allSettings->cbDevice, optarg);
     			break;
 
-	   		case 'b': // Barcode tty device
-	   		strcpy(allSettings->barcodeDevice, optarg);
+	   		case 'b': // CB buadrate
+	   			allSettings->cbBaud = baudToInt(optarg);
     			break;
 
-    		case 'r': // CB Baud
-    			allSettings->cbBaud = baudToInt(optarg);
+    		case 'v': // USB Vendor ID
+    			allSettings->barcode_VID = atoi(optarg);
     			break;
 
-    		case 's': // Barcode Baud
-    			allSettings->barcodeBaud = baudToInt(optarg);
+    		case 's': // USB Product ID
+    			allSettings->barcode_PID = atoi(optarg);
     			break;
     			
    		case '?':
-   			syslog(LOG_INFO, "Invalid startup argument: %c. Exiting...", optopt);
+   			syslog(LOG_INFO, "Invalid startup argument: %c :: Exiting...", optopt);
    			exit(1);
  			break;
 	    }
@@ -413,7 +533,7 @@ int baudToInt(const char *bRate)
  */
 int dispenseDrink(int cb_fd, int *ingredArray)
 {
-	int i, response;
+	int i;
 	const char *endString = "T";
 	char command[50];
 
@@ -526,10 +646,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 	MYSQL_ROW row;
 	MYSQL_RES *result;
 	int *ingred;
-	time_t currentTime, orderTime;
-	double timePassed;
-//	int orderTime;
-
+	
 	if (mysql_query(sql_con, query)) {
     	syslog(LOG_INFO, "Unable to query SQL with string: %s", query);
     	return NULL;
@@ -663,7 +780,7 @@ void logInputArgs(struct settings *settings)
 	syslog(LOG_INFO, "   DB Passwod :: %s", settings->dbPasswd);
 	syslog(LOG_INFO, "   CB Device  :: %s", settings->cbDevice);
 	syslog(LOG_INFO, "   CB Baud    :: %d", settings->cbBaud);
-	syslog(LOG_INFO, "   Bar Device :: %s", settings->barcodeDevice);
-	syslog(LOG_INFO, "   Bar Baud   :: %d", settings->barcodeBaud);
+	syslog(LOG_INFO, "   Bar VID    :: %d", settings->barcode_VID);
+	syslog(LOG_INFO, "   Bar PID    :: %d", settings->barcode_PID);
 	syslog(LOG_INFO, "   Bar Length :: %d", settings->barcodeLength);
 }
