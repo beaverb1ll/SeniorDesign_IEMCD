@@ -1,43 +1,42 @@
-################################################################################
-# Automatically-generated file. Do not edit!
-################################################################################
+all: iemcd libs
 
--include ../makefile.init
+libs: libhidapi-hidraw.so
 
-RM := rm -rf
+CC       ?= gcc
+CFLAGS   ?= -Wall -lmysqlclient -g -fpic
 
-# All of the sources participating in the build are defined here
--include sources.mk
--include subdir.mk
--include objects.mk
+CXX      ?= g++
+CXXFLAGS ?= -Wall -lmysqlclient -g -fpic
 
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(C_DEPS)),)
--include $(C_DEPS)
-endif
-endif
+LDFLAGS  ?= -Wall -lmysqlclient -g
 
--include ../makefile.defs
 
-# Add inputs and outputs from these tool invocations to the build variables 
+COBJS     = hid.o
+CPPOBJS   = iemcd.o
+OBJS      = $(COBJS) $(CPPOBJS)
+LIBS_UDEV = `pkg-config libudev --libs` -lrt
+LIBS      = $(LIBS_UDEV)
+INCLUDES ?= -I../hidapi `pkg-config libusb-1.0 --cflags`
 
-# All Target
-all: iemcd
 
-# Tool invocations
-iemcd: $(OBJS) $(USER_OBJS)
-	@echo 'Building target: $@'
-	@echo 'Invoking: GCC C Linker'
-	gcc -Wall -L/usr/lib64/mysql -L/usr/lib -o "iemcd" $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo 'Finished building target: $@'
-	@echo ' '
+# Console Test Program
+iemcd: $(COBJS) $(CPPOBJS)
+	$(CXX) $(LDFLAGS) $^ $(LIBS_UDEV) -o $@
 
-# Other Targets
+# Shared Libs
+libhidapi-hidraw.so: $(COBJS)
+	$(CC) $(LDFLAGS) $(LIBS_UDEV) -shared -fpic -Wl,-soname,$@.0 $^ -o $@
+
+# Objects
+$(COBJS): %.o: %.c
+	$(CC) $(CFLAGS) -c $(INCLUDES) $< -o $@
+
+$(CPPOBJS): %.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
+
+
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) iemcd
-	-@echo ' '
+	rm -f $(OBJS) hidtest-hidraw libhidapi-hidraw.so iemcd.o
 
-.PHONY: all clean dependents
-.SECONDARY:
+.PHONY: clean libs
 
--include ../makefile.targets
