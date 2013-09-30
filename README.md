@@ -6,7 +6,6 @@ Upon successful dispensing, the SQL database will be updated. Program logging
 is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 
 Packages:
-mysql++-devel mysql-connector-c++-devel
 
 ### Compile Instructions
 ```bash
