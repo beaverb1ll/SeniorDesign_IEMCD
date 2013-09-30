@@ -70,8 +70,7 @@ int main(int argc, char const *argv[])
 
         logInputArgs(currentSettings);
 
-        fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop bloc
-king and return.
+        fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
         syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
 
         barcodeUSBDevice = openUSB(currentSettings->barcode_PID, currentSettings->barcode_VID);
