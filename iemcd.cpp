@@ -256,9 +256,13 @@ char convertUSB(unsigned char *inputArray)
                 return '0';
         }
 
-        if (input > 29 && input < 39) // this is a 1-9 from the barcode scanner
+        if (input > 29 && input < 39) // this is from 1-9 from the barcode scanner
         {
                 return input + 19;
+        }
+        if (input > 3 && input < 30) // this is from a-z 
+        {
+            return input + 93;
         }
 
         return 0;
