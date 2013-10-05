@@ -196,7 +196,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
     int returnedValue, i = 0;
 
     // read the rest of the barcode
-    while (i < BARCODE_LENGTH)
+    while (i < (BARCODE_LENGTH + 1)) // this one will account for the last ack message
     {
 
         returnedValue = readLetterFromUSB(handle, i);
@@ -292,7 +292,7 @@ int convertUSBInput(unsigned char* inputChar)
     {
         if (modifier == 0 || modifier == 2 || modifier == 16) // accept lowercase or uppercase by either Left or Right shift keys
         {
-            return input + 93;
+            return input + 63; // return only uppercase
         }
     }
 
