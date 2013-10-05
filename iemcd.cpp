@@ -36,7 +36,13 @@ struct settings {
         int barcode_VID;
         int cbBaud;
         int barcodeLength;
+        int usbTimeout;
+        hid_device* barcodeUSBDevice;
+        MYSQL *con_SQL;
+        int fd_CB;
 };
+
+struct settings *currentSettings;
 
 int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt);
 int set_interface_attribs (int fd, int speed, int parity);
@@ -45,6 +51,7 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 int getBarcodeUSB(hid_device* handle, char *barcode);
 hid_device* openUSB(int vID, int pID);
 int convertUSBInput(unsigned char* inputChar);
+char readLetterFromUSB(hid_device* handle, int nonblocking);
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
@@ -55,14 +62,10 @@ int daemonize(void);
 void sigINT_handler(int signum);
 void sigTERM_handler(int signum);
 void logInputArgs(struct settings *settings);
+void closeConnections(void);
 
 int main(int argc, char const *argv[])
 {
-        int fd_CB;
-        hid_device* barcodeUSBDevice;
-        MYSQL *con_SQL;
-        struct settings *currentSettings;
-
         daemonize();
 
         currentSettings = parseArgs(argc, (char* const*)argv);
@@ -70,20 +73,19 @@ int main(int argc, char const *argv[])
 
         logInputArgs(currentSettings);
 
-        fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
+        currentSettings->fd_CB = openSerial(currentSettings->cbDevice, currentSettings->cbBaud, 0, 0);    //if no response is recieved within length determined in openSerial(), stop blocking and return.
         syslog(LOG_INFO, "Opened control board serial device %s", currentSettings->cbDevice);
 
-        barcodeUSBDevice = openUSB(currentSettings->barcode_PID, currentSettings->barcode_VID);
+        currentSettings->barcodeUSBDevice = openUSB(currentSettings->barcode_PID, currentSettings->barcode_VID);
         syslog(LOG_INFO, "Opened barcode USB device");
 
-        con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
+        currentSettings->con_SQL = openSQL(currentSettings->dbUsername, currentSettings->dbPasswd, currentSettings->dbName);
         syslog(LOG_INFO, "Opened SQL database %s", currentSettings->dbName);
 
         syslog(LOG_INFO, "Entering main loop");
-        doWork(fd_CB, barcodeUSBDevice, con_SQL);
+        doWork(fd_CB, currentSettings->barcodeUSBDevice, currentSettings->con_SQL);
 
-        close(fd_CB);
-        mysql_close(con_SQL);
+        closeConnections();
         return 0;
 }
 
@@ -186,35 +188,66 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
 
     // read from usb device with a blocking configuration untill the first is recievd. 
     // after first is recieved, either:
-    //       1) continue reading untill BARCODE_LENGTH is read, then return the barcode to caller
+    //   1) continue reading untill BARCODE_LENGTH is read, then return the barcode to caller
     //   2) if timeout occurs, start over.
 
+    int returnedValue, i = 0;
 
-    int status, i = 0;
-    int returnedChar;
+    // read the rest of the barcode
+    while (i < BARCODE_LENGTH)
+    {
+
+        returnedValue = readLetterFromUSB(handle, i);
+
+        if (returnedValue == 0)
+        {
+            syslog(LOG_INFO, "DEBUG :: Reserved character read, skipping character");
+            continue;
+        } 
+        else if(returnedValue < 0)
+        {
+        	syslog(LOG_INFO, "DEBUG :: Invalid character read, skipping barcode");
+        	return -1;
+        }
+
+        // if its here, got a good character so store the incoming character
+        barcode[i] = (char)returnedValue;
+        i++;
+    }
+    barcode[i] = '\0';
+    return 0;
+}
+
+char readLetterFromUSB(hid_device* handle, int nonblocking)
+{
     unsigned char buf[9];
+    int status, returnedChar, i;
 
-    // read without timeout
-    status = hid_read(handle, buf, sizeof(buf));
+    if (nonblocking > 0)
+    {
+        status = hid_read_timeout(handle, buf, sizeof(buf), settings->usbTimeout);
+    } 
+    else 
+    {
+        status = hid_read(handle, buf, sizeof(buf));    
+    }
+    
     if(status < 1) {
         syslog(LOG_INFO, "ERROR :: Unable to read from USB in getBarcodeUSB. Exiting...");
         exit(1);
     }
 
-    int ii;
-    for (ii = 0; ii < status; ii++)
+    for (i = 0; i < status; i++)
     {
-        syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
+        syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[i]);
     }
 
     returnedChar = convertUSBInput(buf);
     if (returnedChar == 0)
     {
-        barcode[i] = '\0';
         /// uh oh, invalid char, close and try again.
         syslog(LOG_INFO, "DEBUG :: Bad character read, skipping barcode scan");
         syslog(LOG_INFO, "DEBUG :: Bad Char Read: %c", buf[2]);
-        syslog(LOG_INFO, "DEBUG :: Skipped Barcode: %s", barcode);
         return -1;
     }
     if (returnedChar < 0) 
@@ -222,48 +255,14 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         return -1;
     }
 
-    // if its here, its valid so store the incoming character
-    barcode[0] = (char)returnedChar;
-    i = 1;
-
-    // read the rest of the barcode
-    while (i < BARCODE_LENGTH)
-    {
-        status = hid_read_timeout(handle, buf, sizeof(buf), 500);
-        if (status < 1) // error happened when reading
-        {
-            barcode[i] = '\0';
-            syslog(LOG_INFO, "DEBUG :: Timeout reached when reading barcode. Skipping...");
-            syslog(LOG_INFO, "DEBUG :: Num chars read: %d", i);
-            syslog(LOG_INFO, "DEBUG :: Barcode: %s", barcode);
-            return -1;
-        }
-
-        for (ii = 0; ii < status; ii++)
-        {
-            syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
-        }
-
-        returnedChar = convertUSBInput(buf);
-        if (returnedChar == 0)
-        {
-            /// uh oh, invalid char, close and try again.
-            syslog(LOG_INFO, "DEBUG :: Reserved character read, skipping character");
-            continue;
-        } else if(returnedChar < 0)
-        {
-        	syslog(LOG_INFO, "DEBUG :: Invalid character read, skipping barcode");
-        	return -1;
-        }
-
-        // if its here, got a good character so store the incoming character
-        barcode[i] = (char)returnedChar;
-        i++;
-    }
-    barcode[i] = '\0';
-    return 0;
+    return (char)returnedChar;
 }
 
+/*
+ *    Mod Key Pressed: -1
+ *    No character   :  0
+ *    Character      : ascii value
+ */
 int convertUSBInput(unsigned char* inputChar)
 {
     unsigned int modifier = (unsigned int)inputChar[0];
@@ -298,20 +297,20 @@ int convertUSBInput(unsigned char* inputChar)
 
     // something's wrong if reached here, return invalid char and skip barcode
     syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
-	return 1;
+	return -1;
 }
 
 hid_device* openUSB(int vID, int pID)
 {
-        hid_device *handle;
+    hid_device *handle;
 
-        if(hid_init()) 
-        {
-                syslog(LOG_INFO, "ERROR :: Unable to initialize USB HID. Exiting...");
-                exit(1);
-        }
+    if(hid_init()) 
+    {
+        syslog(LOG_INFO, "ERROR :: Unable to initialize USB HID. Exiting...");
+        exit(1);
+    }
 
-        handle = hid_open(0x05e0, 0x1200, NULL);
+    handle = hid_open(0x05e0, 0x1200, NULL);
     if (!handle) {
         printf("ERROR :: Unable to open USB device %d:%d. Exiting...", vID, pID);
         exit(1);
@@ -325,157 +324,163 @@ hid_device* openUSB(int vID, int pID)
 
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 {
-        char barcode[BARCODE_LENGTH + 1];
-        char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=";
-        char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
-        char queryString[200];
-        int *ingredients, barcodeValid;
+    char barcode[BARCODE_LENGTH + 1];
+    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=";
+    char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
+    char queryString[200];
+    int *ingredients, barcodeValid;
 
-        while (TRUE) {
-                // wait for barcode.
+    while (TRUE) {
+        // wait for barcode.
 
-                // read from usbBarcodeScanner
-                // numRead = read (barcodeFD, barcode, sizeof(barcode));
-                barcodeValid = getBarcodeUSB(barcodeHandle, barcode);
+        // read from usbBarcodeScanner
+        // numRead = read (barcodeFD, barcode, sizeof(barcode));
+        barcodeValid = getBarcodeUSB(barcodeHandle, barcode);
 
-                if(barcodeValid < 0)
-                {
-                        syslog(LOG_INFO, "DEBUG :: Valid barcode not received. Ignoring input");
-                        continue;
-                }
-
-                // construct query string
-                strcpy(queryString, baseSelect);
-                strcat(queryString, barcode);
-                syslog(LOG_INFO, "DEBUG :: Barcode:%s  Query string: %s", barcode,  queryString);
-
-                // query sql for barcode
-                ingredients = getIngredFromSQL(con, queryString);
-                if (ingredients == NULL)
-                {
-                        syslog(LOG_INFO, "DEBUG :: No ingreds found. Continuing...");
-                        continue;
-                }
-
-                syslog(LOG_INFO, "DEBUG :: Ingredients found. Dispensing...");
-
-                // send commands to CB Board
-                if (dispenseDrink(commandsFD, ingredients) != 0)
-                {
-                        // something went wrong. don't touch sql.
-                        free(ingredients);
-                        syslog(LOG_INFO, "DEBUG :: Error from dispenseDrink, leaving SQL row intact");
-                        continue;
-                }
-
-                // free ingredients, they are no longer needed.
-                free(ingredients);
-
-                // something must have gone ok. manipulate sql.
-                // create query string
-                strcpy(queryString, baseUpdate);
-                strcat(queryString, barcode);
-
-                // update sql
-                if (mysql_query(con, queryString))
-                {
-                        syslog(LOG_INFO, "DEBUG :: Unable to update SQL with string: %s", queryString);
-				} else
-                {
-                        syslog(LOG_INFO, "DEBUG :: Updated SQL.");
-                }
-        // do another barcode
+        if(barcodeValid < 0)
+        {
+            syslog(LOG_INFO, "DEBUG :: Valid barcode not received. Ignoring input");
+            continue;
         }
-        return 0;
+
+        // construct query string
+        strcpy(queryString, baseSelect);
+        strcat(queryString, barcode);
+        syslog(LOG_INFO, "DEBUG :: Barcode:%s  Query string: %s", barcode,  queryString);
+
+        // query sql for barcode
+        ingredients = getIngredFromSQL(con, queryString);
+        if (ingredients == NULL)
+        {
+            syslog(LOG_INFO, "DEBUG :: No ingreds found. Continuing...");
+            continue;
+        }
+
+        syslog(LOG_INFO, "DEBUG :: Ingredients found. Dispensing...");
+
+        // send commands to CB Board
+        if (dispenseDrink(commandsFD, ingredients) != 0)
+        {
+            // something went wrong. don't touch sql.
+            free(ingredients);
+            syslog(LOG_INFO, "DEBUG :: Error from dispenseDrink, leaving SQL row intact");
+            continue;
+        }
+
+        // free ingredients, they are no longer needed.
+        free(ingredients);
+
+        // something must have gone ok. manipulate sql.
+        // create query string
+        strcpy(queryString, baseUpdate);
+        strcat(queryString, barcode);
+
+        // update sql
+        if (mysql_query(con, queryString))
+        {
+            syslog(LOG_INFO, "DEBUG :: Unable to update SQL with string: %s", queryString);
+		} else
+        {
+            syslog(LOG_INFO, "DEBUG :: Updated SQL.");
+        }
+    // do another barcode
+    }
+    return 0;
 }
 
 struct settings* parseArgs(int argc, char* const* argv)
 {
-        struct settings* allSettings;
-        int opt;
+    struct settings* allSettings;
+    int opt;
 
-        allSettings = (struct settings*)calloc(1, sizeof(struct settings));
-        if (allSettings == NULL)
+    allSettings = (struct settings*)calloc(1, sizeof(struct settings));
+    if (allSettings == NULL)
+    {
+            syslog(LOG_INFO, "ERROR :: Unable to create settings struct. Exiting...");
+            exit(1);
+    }
+
+    while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:t:")) != -1)
+    {
+        switch(opt)
         {
-                syslog(LOG_INFO, "ERROR :: Unable to create settings struct. Exiting...");
-                exit(1);
+            case 'u': // username
+                    strcpy(allSettings->dbUsername, optarg);
+                    break;
+
+            case 'p': // password
+                    strcpy(allSettings->dbPasswd, optarg);
+                    break;
+
+            case 'd': // dbName
+                    strcpy(allSettings->dbName, optarg);
+                    break;
+
+            case 'c': // CB tty device name
+                    strcpy(allSettings->cbDevice, optarg);
+                    break;
+
+            case 'b': // CB buadrate
+                    allSettings->cbBaud = baudToInt(optarg);
+                    break;
+
+            case 'v': // USB Vendor ID
+                    allSettings->barcode_VID = atoi(optarg);
+                    break;
+
+            case 's': // USB Product ID
+                    allSettings->barcode_PID = atoi(optarg);
+                    break;
+
+            case 't':
+                    // USB Read Timeout
+                    allSettings->usbTimeout = atoi(optarg);
+                    break;
+
+            case '?':
+                    syslog(LOG_INFO, "ERROR :: Invalid startup argument: %c :: Exiting...", optopt);
+                    exit(1);
+                    break;
         }
-
-        while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:")) != -1)
-        {
-            switch(opt)
-            {
-                case 'u': // username
-                        strcpy(allSettings->dbUsername, optarg);
-                        break;
-
-                case 'p': // password
-                        strcpy(allSettings->dbPasswd, optarg);
-                        break;
-
-                case 'd': // dbName
-                        strcpy(allSettings->dbName, optarg);
-                        break;
-
-                case 'c': // CB tty device name
-                        strcpy(allSettings->cbDevice, optarg);
-                        break;
-
-                        case 'b': // CB buadrate
-                                allSettings->cbBaud = baudToInt(optarg);
-                        break;
-
-                case 'v': // USB Vendor ID
-                        allSettings->barcode_VID = atoi(optarg);
-                        break;
-
-                case 's': // USB Product ID
-                        allSettings->barcode_PID = atoi(optarg);
-                        break;
-    
-                case '?':
-                        syslog(LOG_INFO, "ERROR :: Invalid startup argument: %c :: Exiting...", optopt);
-                        exit(1);
-                        break;
-            }
-        }
-        return allSettings;
+    }
+    return allSettings;
 }
 
 int baudToInt(const char *bRate)
 {
-        if(!strcmp(bRate, "B38400"))
-                return 17;
-        else if (!strcmp(bRate, "B19200"))
-                return 16;
-        else if (!strcmp(bRate, "B9600"))
-                return 15;
-        else if (!strcmp(bRate, "B4800"))
-                return 14;
-        else if (!strcmp(bRate, "B2400"))
-                return 13;
-        else if (!strcmp(bRate, "B1800"))
-                return 12;
-        else if (!strcmp(bRate, "B1200"))
-                return 11;
-        else if (!strcmp(bRate, "B600"))
-                return 10;
-        else if (!strcmp(bRate, "B300"))
-                return 7;
-        else if (!strcmp(bRate, "B200"))
-                return 6;
-        else if (!strcmp(bRate, "B150"))
-                return 5;
-        else if (!strcmp(bRate, "B134"))
-                return 4;
-        else if (!strcmp(bRate, "B110"))
-                return 3;
-        else if (!strcmp(bRate, "B75"))
-                return 2;
-        else if (!strcmp(bRate, "B50"))
-                return 1;
+    if(!strcmp(bRate, "B38400"))
+            return 17;
+    else if (!strcmp(bRate, "B19200"))
+            return 16;
+    else if (!strcmp(bRate, "B9600"))
+            return 15;
+    else if (!strcmp(bRate, "B4800"))
+            return 14;
+    else if (!strcmp(bRate, "B2400"))
+            return 13;
+    else if (!strcmp(bRate, "B1800"))
+            return 12;
+    else if (!strcmp(bRate, "B1200"))
+            return 11;
+    else if (!strcmp(bRate, "B600"))
+            return 10;
+    else if (!strcmp(bRate, "B300"))
+            return 7;
+    else if (!strcmp(bRate, "B200"))
+            return 6;
+    else if (!strcmp(bRate, "B150"))
+            return 5;
+    else if (!strcmp(bRate, "B134"))
+            return 4;
+    else if (!strcmp(bRate, "B110"))
+            return 3;
+    else if (!strcmp(bRate, "B75"))
+            return 2;
+    else if (!strcmp(bRate, "B50"))
+            return 1;
 
-        return 0;
+    return 0;
+}
 // B0   0000000         /* hang up */
 // B50  0000001
 // B75  0000002
@@ -492,7 +497,7 @@ int baudToInt(const char *bRate)
 // B9600        0000015
 // B19200       0000016
 // B38400       0000017
-}
+
 
 /*
  *
@@ -505,46 +510,46 @@ int baudToInt(const char *bRate)
  */
 int dispenseDrink(int cb_fd, int *ingredArray)
 {
-        int i;
-        const char *endString = "T";
-        char command[50];
+    int i;
+    const char *endString = "T";
+    char command[50];
 
 
-        // ask for clear to send
-        if(sendCommand_getAck(cb_fd, "D"))
+    // ask for clear to send
+    if(sendCommand_getAck(cb_fd, "D"))
+    {
+        // uh oh, something went wrong.
+        syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
+        return 1;
+    }
+
+    // loop through and send each ingred, waiting for repsonse between each command
+    for (i = 0; i < NUM_INGREDIENTS; i++)
+    {
+        // convert ingredient to string and store into command
+        sprintf(command, "%d", ingredArray[i]);
+        // itoa(ingredArray[i], command, 10);
+        // append end string
+        strcat(command, endString);
+
+
+        // send commmand, wait for response
+        if(sendCommand_getAck(cb_fd, command))
         {
-                // uh oh, something went wrong.
-                syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
-                return 1;
+            // uh oh, something went wrong.
+            syslog(LOG_INFO, "ERROR :: Comm error with dispenseDrink");
+            return 1;
         }
+    }
 
-        // loop through and send each ingred, waiting for repsonse between each command
-        for (i = 0; i < NUM_INGREDIENTS; i++)
-        {
-                // convert ingredient to string and store into command
-                sprintf(command, "%d", ingredArray[i]);
-                // itoa(ingredArray[i], command, 10);
-                // append end string
-                strcat(command, endString);
+    if(sendCommand_getAck(cb_fd, "F"))
+    {
+        // uh oh, something went wrong.
+        syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
+        return 1;
+    }
 
-
-                // send commmand, wait for response
-                if(sendCommand_getAck(cb_fd, command))
-                {
-                        // uh oh, something went wrong.
-                        syslog(LOG_INFO, "ERROR :: Comm error with dispenseDrink");
-                        return 1;
-                }
-        }
-
-        if(sendCommand_getAck(cb_fd, "F"))
-        {
-                // uh oh, something went wrong.
-                syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
-                return 1;
-        }
-
-        return 0;
+    return 0;
 }
 
 
@@ -556,43 +561,43 @@ int dispenseDrink(int cb_fd, int *ingredArray)
  */
 int sendCommand_getAck(int fd, const char *command)
 {
-        char buffer[5];
-        int numRead;
+    char buffer[5];
+    int numRead;
 
-        write (fd, command, sizeof(command));
-        syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
-        // clear receive buffer
-        tcflush(fd, TCIFLUSH);
+    write (fd, command, sizeof(command));
+    syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
+    // clear receive buffer
+    tcflush(fd, TCIFLUSH);
 
-        // wait for response
-        numRead = read (fd, buffer, sizeof(buffer));
-        buffer[numRead] = '\0';
+    // wait for response
+    numRead = read (fd, buffer, sizeof(buffer));
+    buffer[numRead] = '\0';
 
-        if(numRead < 1)
-        {
-                syslog(LOG_INFO, "DEBUG :: Error reading ack from fd");
-                return 1;
-        }
+    if(numRead < 1)
+    {
+        syslog(LOG_INFO, "DEBUG :: Error reading ack from fd");
+        return 1;
+    }
 
-        switch (buffer[0])
-        {
-                case 'f':
-                        // fall through
-                case 'F':
-                        // fall through
-                case 'y':
-                        // fall through
-                case 'Y':
-                        return 0;
-                        break;
+    switch (buffer[0])
+    {
+        case 'f':
+                // fall through
+        case 'F':
+                // fall through
+        case 'y':
+                // fall through
+        case 'Y':
+            return 0;
+            break;
 
-                case 'n':
-                        // fall through
-                case 'N':
-                        // fall through
-                default:
-                        return 1;
-        }
+        case 'n':
+                // fall through
+        case 'N':
+                // fall through
+        default:
+            return 1;
+    }
 }
 
 /*
@@ -614,75 +619,76 @@ int sendCommand_getAck(int fd, const char *command)
  */
 int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 {
-        int num_rows, i;
-        MYSQL_ROW row;
-        MYSQL_RES *result;
-        int *ingred;
+    int num_rows, i;
+    MYSQL_ROW row;
+    MYSQL_RES *result;
+    int *ingred;
 
-        if (mysql_query(sql_con, query)) {
+    if (mysql_query(sql_con, query)) {
         syslog(LOG_INFO, "DEBUG :: Unable to query SQL with string: %s", query);
         return NULL;
-        }
+    }
 
-        result = mysql_store_result(sql_con);
+    result = mysql_store_result(sql_con);
 
-        if (result == NULL)
-        {
+    if (result == NULL)
+    {
         syslog(LOG_INFO, "DEBUG :: Unable to get result from SQL query: %s", query);
         return NULL;
-        }
+    }
 
-        num_rows = mysql_num_rows(result);
-
-
-        if (num_rows != 1)
-        {
-                syslog(LOG_INFO, "DEBUG :: Invalid number of rows returned for query: %s", query);
-                return NULL;
-        }
-
-        row = mysql_fetch_row(result);
+    num_rows = mysql_num_rows(result);
 
 
-        // ========= DEBUG =====================
-        int numFields = mysql_num_fields(result);
-        int ii;
-        for( ii=0; ii < numFields; ii++)
-        {
+    if (num_rows != 1)
+    {
+        syslog(LOG_INFO, "DEBUG :: Invalid number of rows returned for query: %s", query);
+        return NULL;
+    }
+
+    row = mysql_fetch_row(result);
+
+
+    // ========= DEBUG =====================
+    int numFields = mysql_num_fields(result);
+    int ii;
+    for( ii=0; ii < numFields; ii++)
+    {
         syslog(LOG_INFO, "DEBUG :: %d : %s",ii, row[ii] ? row[ii] : "NULL");  // Not NULL then print
     }
-        // ======== END DEBUG ==================
+    // ======== END DEBUG ==================
 
-        // verify time hasn't expired
-        if (!strcmp("true", row[NUM_INGREDIENTS+1]))
-        {
-                syslog(LOG_INFO, "DEBUG :: Drink order expired. skipping...");
-                return NULL;
-        }
-        syslog(LOG_INFO, "DEBUG :: Drink order not expired. Continuing... ");
+    // verify time hasn't expired
+    if (!strcmp("true", row[NUM_INGREDIENTS+1]))
+    {
+        syslog(LOG_INFO, "DEBUG :: Drink order expired. skipping...");
+        return NULL;
+    }
+    syslog(LOG_INFO, "DEBUG :: Drink order not expired. Continuing... ");
 
 
-        // verify drink has not been picked up yet.
-        if(!strcmp("true", row[NUM_INGREDIENTS]))
-        {
-                syslog(LOG_INFO, "DEBUG :: Drink already picked up");
-                return NULL;
-        }
-        syslog(LOG_INFO, "DEBUG :: Drink has not been picked up");
+    // verify drink has not been picked up yet.
+    if(!strcmp("true", row[NUM_INGREDIENTS]))
+    {
+        syslog(LOG_INFO, "DEBUG :: Drink already picked up");
+        return NULL;
+    }
+    syslog(LOG_INFO, "DEBUG :: Drink has not been picked up");
 
-        ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
-        // store ingredients from row data
-        for (i = 0; i < NUM_INGREDIENTS; i++)
-        {
-                ingred[i] = atoi(row[i]);;
-        }
+    ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
+    // store ingredients from row data
+    for (i = 0; i < NUM_INGREDIENTS; i++)
+    {
+        ingred[i] = atoi(row[i]);; 
+    }
 
     mysql_free_result(result);
         return ingred;
 }
 
-int daemonize(void) {
-        /* Our process ID and Session ID */
+int daemonize(void) 
+{
+    /* Our process ID and Session ID */
     pid_t pid, sid;
     
     /* Fork off the parent process */
@@ -700,8 +706,8 @@ int daemonize(void) {
     umask(0);
             
     /* Open any logs here */ 
-     openlog("iemcd", LOG_PID|LOG_CONS, LOG_USER);
-     syslog(LOG_INFO, "Daemon Started.\n");
+    openlog("iemcd", LOG_PID|LOG_CONS, LOG_USER);
+    syslog(LOG_INFO, "Daemon Started.\n");
             
     /* Create a new SID for the child process */
     sid = setsid();
@@ -729,30 +735,40 @@ int daemonize(void) {
     /* Register Signal Handlers*/
     signal(SIGTERM, sigTERM_handler);
     signal(SIGINT, sigINT_handler);
-        return 0;
+    return 0;
  }
  
 void sigINT_handler(int signum) 
 {
-    syslog (LOG_INFO, "Caught SIGINT. Exiting.");
+    syslog (LOG_INFO, "Caught SIGINT. Exiting...");
+    closeConnections();
     exit(0);
 
 }
 
 void sigTERM_handler(int signum) 
 {
-    syslog(LOG_INFO, "Caught SIGTERM. Exiting.");  
+    syslog(LOG_INFO, "Caught SIGTERM. Exiting...");
+    closeConnections();
     exit(0);
+}
+
+void closeConnections(void)
+{
+    close(currentSettings->fd_CB);
+    mysql_close(currentSettings->con_SQL);
+    hid_close(currentSettings->barcodeUSBDevice);
+    hid_exit();
 }
 
 void logInputArgs(struct settings *settings)
 {
-        syslog(LOG_INFO, "   DB Name    :: %s", settings->dbName);
-        syslog(LOG_INFO, "   DB User    :: %s", settings->dbUsername);
-        syslog(LOG_INFO, "   DB Passwod :: %s", settings->dbPasswd);
-        syslog(LOG_INFO, "   CB Device  :: %s", settings->cbDevice);
-        syslog(LOG_INFO, "   CB Baud    :: %d", settings->cbBaud);
-        syslog(LOG_INFO, "   Bar VID    :: %d", settings->barcode_VID);
-        syslog(LOG_INFO, "   Bar PID    :: %d", settings->barcode_PID);
-        syslog(LOG_INFO, "   Bar Length :: %d", settings->barcodeLength);
+    syslog(LOG_INFO, "   DB Name    :: %s", settings->dbName);
+    syslog(LOG_INFO, "   DB User    :: %s", settings->dbUsername);
+    syslog(LOG_INFO, "   DB Passwod :: %s", settings->dbPasswd);
+    syslog(LOG_INFO, "   CB Device  :: %s", settings->cbDevice);
+    syslog(LOG_INFO, "   CB Baud    :: %d", settings->cbBaud);
+    syslog(LOG_INFO, "   Bar VID    :: %d", settings->barcode_VID);
+    syslog(LOG_INFO, "   Bar PID    :: %d", settings->barcode_PID);
+    syslog(LOG_INFO, "   Bar Length :: %d", settings->barcodeLength);
 }
