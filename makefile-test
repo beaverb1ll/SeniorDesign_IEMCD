@@ -1,0 +1,24 @@
+EXECUTABLE = iemcd
+
+CXX      ?= g++
+CXXFLAGS ?= -Wall -lmysqlclient -g -fpic
+CPPOBJS    = $(EXECUTABLE).o
+# INCLUDES ?= -I./hidapi `pkg-config libusb-1.0 --cflags`
+
+all: $(EXECUTABLE)
+
+
+$(CPPOBJS): %.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
+
+install:
+	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
+	install $(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
+	install $(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
+	systemctl daemon-reload
+	systemctl restart $(EXECUTABLE).service
+
+clean:
+	rm -f $(OBJS) hidtest-hidraw libhidapi-hidraw.so iemcd.o
+
+.PHONY: clean libs
