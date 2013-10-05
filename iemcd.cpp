@@ -53,7 +53,7 @@ MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_na
 int getBarcodeUSB(hid_device* handle, char *barcode);
 hid_device* openUSB(int vID, int pID);
 int convertUSBInput(unsigned char* inputChar);
-char readLetterFromUSB(hid_device* handle, int nonblocking);
+int readLetterFromUSB(hid_device* handle, int nonblocking);
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
@@ -227,7 +227,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
  *
  *
  */
-char readLetterFromUSB(hid_device* handle, int nonblocking)
+int readLetterFromUSB(hid_device* handle, int nonblocking)
 {
     unsigned char buf[9];
     int status, returnedChar, i;
