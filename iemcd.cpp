@@ -292,7 +292,7 @@ int convertUSBInput(unsigned char* inputChar)
     {
         if (modifier == 0 || modifier == 2 || modifier == 16) // accept lowercase or uppercase by either Left or Right shift keys
         {
-            return input + 63; // return only uppercase
+            return input + 61; // return only uppercase
         }
     }
 
