@@ -204,7 +204,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
     int ii;
     for (ii = 0; ii < status; ii++)
     {
-        syslog(LOG_INFO, "DEBUG :: HID READ: %d ", buf[ii]);
+        syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
     }
 
     tempChar = convertUSB(buf[2]);
@@ -235,10 +235,9 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
             return 1;
         }
 
-        int ii;
         for (ii = 0; ii < status; ii++)
         {
-            syslog(LOG_INFO, "HID READ: %d ", buf[ii]);
+            syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
         }
 
         tempChar = convertUSB(buf[2]);
