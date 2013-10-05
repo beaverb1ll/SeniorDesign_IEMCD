@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <mysql/mysql.h>
 
-#include "hidapi.h"
+#include "hidapi/hidapi.h"
 
 
 #define TRUE 1
