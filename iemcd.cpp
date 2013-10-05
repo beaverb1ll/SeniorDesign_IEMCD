@@ -200,7 +200,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
     consumeUSB(handle);
 
     // read the rest of the barcode
-    while (i < (BARCODE_LENGTH + 1)) // this one will account for the last ack message
+    while (i < BARCODE_LENGTH )
     {
 
         returnedValue = readLetterFromUSB(handle, i);
