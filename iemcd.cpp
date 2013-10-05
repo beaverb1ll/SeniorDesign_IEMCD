@@ -236,7 +236,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
 int readLetterFromUSB(hid_device* handle, int nonblocking)
 {
     unsigned char buf[9];
-    int status, returnedChar, i;
+    int status, returnedChar;
 
     if (nonblocking > 0)
     {
