@@ -256,7 +256,7 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
     }
 
     returnedChar = convertUSBInput(buf);
-    if (returnedChar < 1)
+    if (returnedChar < 0)
     {
         // discard all incoming chars for this scan
         syslog(LOG_INFO, "DEBUG :: Invalid character read %d. consuming incoming chars.", returnedChar);
@@ -285,17 +285,25 @@ int convertUSBInput(unsigned char* inputChar)
 	
 	syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
     syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
-	
-    if (modifier != 0)
+
+    if (input > 3 && input < 30) // this is from a-z 
+    {
+        if (modifier == 0 || modifier == 2 || modifier == 16) // accept lowercase or uppercase by either Left or Right shift keys
+        {
+            return input + 93;
+        }
+    }
+
+	if (input == 0) // this is no character
+	{
+		return 0;
+	}
+    if (modifier != 0) // if any modifier is presed here, its not valid
     {
         syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
         return -1;
     }
 
-	if (input == 0)
-	{
-		return 0;
-	}
 	if (input == 39)  // this is a zero from the barcode scanner
 	{
 		return '0';
@@ -305,11 +313,7 @@ int convertUSBInput(unsigned char* inputChar)
 	{
 		return input + 19;
 	}
-	if (input > 3 && input < 30) // this is from a-z 
-	{
-    	return input + 93;
-	}
-
+	
     // something's wrong if reached here, return invalid char and skip barcode
     syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
 	return -1;
