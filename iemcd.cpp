@@ -234,7 +234,11 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
                         /// uh oh, invalid char, close and try again.
                         syslog(LOG_INFO, "reserved character read, skipping character");
                         continue;
-                }
+                } else if(tempChar == 1)
+                {
+					syslog(LOG_INFO, "Invalid character read, skipping barcode");
+					return 1;
+				}
 
                 // if its here, got a good character so store the incoming character
                 barcode[i] = tempChar;
@@ -265,7 +269,7 @@ char convertUSB(unsigned char *inputArray)
             return input + 93;
         }
 
-        return 0;
+        return 1;
 }
 
 hid_device* openUSB(int vID, int pID)
