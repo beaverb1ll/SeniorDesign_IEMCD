@@ -191,7 +191,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
 
 
     int status, i = 0;
-    char tempChar;
+    int returnedChar;
     unsigned char buf[9];
 
     // read without timeout
@@ -207,19 +207,23 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
     }
 
-    tempChar = convertUSBInput(buf);
-    if (tempChar == 0)
+    returnedChar = convertUSBInput(buf);
+    if (returnedChar == 0)
     {
         barcode[i] = '\0';
         /// uh oh, invalid char, close and try again.
         syslog(LOG_INFO, "DEBUG :: Bad character read, skipping barcode scan");
         syslog(LOG_INFO, "DEBUG :: Bad Char Read: %c", buf[2]);
         syslog(LOG_INFO, "DEBUG :: Skipped Barcode: %s", barcode);
-        return 1;
+        return -1;
+    }
+    if (returnedChar < 0) 
+    {
+        return -1;
     }
 
     // if its here, its valid so store the incoming character
-    barcode[0] = tempChar;
+    barcode[0] = (char)returnedChar;
     i = 1;
 
     // read the rest of the barcode
@@ -232,7 +236,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
             syslog(LOG_INFO, "DEBUG :: Timeout reached when reading barcode. Skipping...");
             syslog(LOG_INFO, "DEBUG :: Num chars read: %d", i);
             syslog(LOG_INFO, "DEBUG :: Barcode: %s", barcode);
-            return 1;
+            return -1;
         }
 
         for (ii = 0; ii < status; ii++)
@@ -240,27 +244,27 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
             syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
         }
 
-        tempChar = convertUSBInput(buf);
-        if (tempChar == 0)
+        returnedChar = convertUSBInput(buf);
+        if (returnedChar == 0)
         {
             /// uh oh, invalid char, close and try again.
             syslog(LOG_INFO, "DEBUG :: Reserved character read, skipping character");
             continue;
-        } else if(tempChar == 1)
+        } else if(returnedChar < 0)
         {
         	syslog(LOG_INFO, "DEBUG :: Invalid character read, skipping barcode");
-        	return 1;
+        	return -1;
         }
 
         // if its here, got a good character so store the incoming character
-        barcode[i] = tempChar;
+        barcode[i] = (char)returnedChar;
         i++;
     }
     barcode[i] = '\0';
     return 0;
 }
 
-char convertUSBInput(unsigned char* inputChar)
+int convertUSBInput(unsigned char* inputChar)
 {
     unsigned int modifier = (unsigned int)inputChar[0];
 	unsigned int input = (unsigned int)inputChar[2];
@@ -271,7 +275,7 @@ char convertUSBInput(unsigned char* inputChar)
     if (modifier != 0)
     {
         syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
-        return 1;
+        return -1;
     }
 
 	if (input == 0)
@@ -334,7 +338,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
                 // numRead = read (barcodeFD, barcode, sizeof(barcode));
                 barcodeValid = getBarcodeUSB(barcodeHandle, barcode);
 
-                if(barcodeValid == 1)
+                if(barcodeValid < 0)
                 {
                         syslog(LOG_INFO, "DEBUG :: Valid barcode not received. Ignoring input");
                         continue;
