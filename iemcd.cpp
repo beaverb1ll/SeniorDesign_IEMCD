@@ -44,7 +44,7 @@ void set_blocking (int fd, int block_numChars, int block_timeout);
 MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name);
 int getBarcodeUSB(hid_device* handle, char *barcode);
 hid_device* openUSB(int vID, int pID);
-char convertUSB(unsigned char *inputArray);
+char convertUSB(unsigned char inputChar);
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
