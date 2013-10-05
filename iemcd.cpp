@@ -83,7 +83,7 @@ int main(int argc, char const *argv[])
         syslog(LOG_INFO, "Opened SQL database %s", currentSettings->dbName);
 
         syslog(LOG_INFO, "Entering main loop");
-        doWork(fd_CB, currentSettings->barcodeUSBDevice, currentSettings->con_SQL);
+        doWork(currentSettings->fd_CB, currentSettings->barcodeUSBDevice, currentSettings->con_SQL);
 
         closeConnections();
         return 0;
@@ -225,7 +225,7 @@ char readLetterFromUSB(hid_device* handle, int nonblocking)
 
     if (nonblocking > 0)
     {
-        status = hid_read_timeout(handle, buf, sizeof(buf), settings->usbTimeout);
+        status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
     } 
     else 
     {
