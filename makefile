@@ -1,3 +1,5 @@
+EXECUTABLE=iemcd
+
 all: iemcd libs
 
 libs: libhidapi-hidraw.so
@@ -34,6 +36,11 @@ $(COBJS): %.o: %.c
 $(CPPOBJS): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
 
+install:
+	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
+	install $(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
+	install $(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
+	systemctl daemon-reload
 
 clean:
 	rm -f $(OBJS) hidtest-hidraw libhidapi-hidraw.so iemcd.o
