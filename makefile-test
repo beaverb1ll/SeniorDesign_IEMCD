@@ -9,7 +9,7 @@ all: $(EXECUTABLE)
 
 
 $(CPPOBJS): %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
+	$(CXX) $(CXXFLAGS) -c  $< -o $@
 
 install:
 	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
