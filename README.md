@@ -26,7 +26,7 @@ Packages:
 -s :: USB Product ID
 
 ### Sample Barcode
-The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 inclusively.
+The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 and a-z.
 
 ```bash
 1234567890123456789012345678901234567890
@@ -38,28 +38,27 @@ INSERT INTO `SD`.`orderTable`
 (`id`,
 `orderID`,
 `orderTime`,
-`pickupTime`,
+`expired`,
 `pickedUp`,
 `Ing0`,
 `Ing1`,
 `Ing2`,
 `Ing3`,
 `Ing4`,
-`Ing5`,
-`expired`)
+`Ing5` )
 VALUES
 (
-15,
-0123456789012345678901234567890123456789,
-100,
+0,
+0,
+0,
 0,
 false,
-10,
-11,
-12,
-13,
-14,
-15,
+50,
+50,
+50,
+50,
+50,
+50,
 false
 );
 ```
@@ -67,10 +66,10 @@ false
 ### SQL CREATE
 ```bash
 CREATE TABLE `orderTable` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `orderID` varchar(50) DEFAULT NULL,
   `orderTime` int(11) DEFAULT '0',
-  `pickupTime` int(11) DEFAULT '0',
+  `expired` varchar(10) DEFAULT 'false',
   `pickedUp` varchar(10) DEFAULT 'false',
   `Ing0` int(11) DEFAULT NULL,
   `Ing1` int(11) DEFAULT NULL,
@@ -78,7 +77,6 @@ CREATE TABLE `orderTable` (
   `Ing3` int(11) DEFAULT NULL,
   `Ing4` int(11) DEFAULT NULL,
   `Ing5` int(11) DEFAULT NULL,
-  `expired` varchar(10) DEFAULT 'false',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1$$
+);
 ```
