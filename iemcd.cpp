@@ -275,8 +275,8 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
 
 void consumeUSB(hid_device *handle)
 {
-    int i = 0;, status;
-    char buf[10];
+    int i = 0, status;
+    unsigned char buf[9];
 
     while(status > 0)
     {
