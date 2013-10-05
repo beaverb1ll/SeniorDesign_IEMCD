@@ -260,7 +260,7 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
     {
         // discard all incoming chars for this scan
         syslog(LOG_INFO, "DEBUG :: Invalid character read. consuming incoming chars.");
-        while(status < 0)
+        while(status > 0)
         {
             status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
         }
