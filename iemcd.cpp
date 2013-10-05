@@ -207,7 +207,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
     }
 
-    tempChar = convertUSB(buf[2]);
+    tempChar = convertUSBInput(buf);
     if (tempChar == 0)
     {
         barcode[i] = '\0';
@@ -240,7 +240,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
             syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[ii]);
         }
 
-        tempChar = convertUSB(buf[2]);
+        tempChar = convertUSBInput(buf);
         if (tempChar == 0)
         {
             /// uh oh, invalid char, close and try again.
@@ -260,30 +260,40 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
     return 0;
 }
 
-char convertUSB(unsigned char inputChar)
+char convertUSBInput(unsigned char* inputChar)
 {
-	int input = (int)inputChar;
+    unsigned int modifier = (unsigned int)inputChar[0];
+	unsigned int input = (unsigned int)inputChar[2];
 	
 	syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
+    syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
 	
+    if (modifier != 0)
+    {
+        syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
+        return 1;
+    }
+
 	if (input == 0)
 	{
 			return 0;
 	}
 	if (input == 39)  // this is a zero from the barcode scanner
 	{
-			return '0';
+		return '0';
 	}
 
 	if (input > 29 && input < 39) // this is from 1-9 from the barcode scanner
 	{
-			return input + 19;
+		return input + 19;
 	}
 	if (input > 3 && input < 30) // this is from a-z 
 	{
-		return input + 93;
+    	return input + 93;
 	}
 
+    // something's wrong if reached here, return invalid char and skip barcode
+    syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
 	return 1;
 }
 
