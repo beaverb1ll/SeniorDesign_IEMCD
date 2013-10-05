@@ -65,6 +65,7 @@ void sigINT_handler(int signum);
 void sigTERM_handler(int signum);
 void logInputArgs(struct settings *settings);
 void closeConnections(void);
+void consumeUSB(hid_device *handle);
 
 int main(int argc, char const *argv[])
 {
@@ -195,6 +196,9 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
 
     int returnedValue, i = 0;
 
+    // read anything buffered
+    consumeUSB(handle);
+
     // read the rest of the barcode
     while (i < (BARCODE_LENGTH + 1)) // this one will account for the last ack message
     {
@@ -212,13 +216,13 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         	syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode: %s read: %d", barcode, i);
         	return -1;
         }
-
         // if its here, got a good character so store the incoming character
         barcode[i] = (char)returnedValue;
         i++;
     }
     barcode[i] = '\0';
     syslog(LOG_INFO, "DEBUG :: Received barcode: %s", barcode);
+    consumeUSB(handle);
     return 0;
 }
 
@@ -262,17 +266,24 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
     {
         // discard all incoming chars for this scan
         syslog(LOG_INFO, "DEBUG :: Invalid character read %d. consuming incoming chars.", returnedChar);
-        i = 0;
-        while(status > 0)
-        {
-            status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
-            i++;
-        }
-        syslog(LOG_INFO, "DEBUG :: Consumed %d characters.", i);
+        consumeUSB(handle);
         return -1;
     }
 
     return (char)returnedChar;
+}
+
+void consumeUSB(hid_device *handle)
+{
+    int i = 0;, status;
+    char buf[10];
+
+    while(status > 0)
+    {
+        status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
+        i++;
+    }
+    syslog(LOG_INFO, "DEBUG :: Consumed %d characters.", i);
 }
 
 /*
