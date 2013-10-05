@@ -41,6 +41,7 @@ install:
 	install $(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
 	install $(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
 	systemctl daemon-reload
+	systemctl restart $(EXECUTABLE).service
 
 clean:
 	rm -f $(OBJS) hidtest-hidraw libhidapi-hidraw.so iemcd.o
