@@ -409,8 +409,8 @@ struct settings* parseArgs(int argc, char* const* argv)
     allSettings = (struct settings*)calloc(1, sizeof(struct settings));
     if (allSettings == NULL)
     {
-            syslog(LOG_INFO, "ERROR :: Unable to create settings struct. Exiting...");
-            exit(1);
+        syslog(LOG_INFO, "ERROR :: Unable to create settings struct. Exiting...");
+        exit(1);
     }
 
     while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:t:")) != -1)
