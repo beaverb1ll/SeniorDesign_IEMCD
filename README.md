@@ -15,7 +15,7 @@ mysql++-devel mysql-connector-c++-devel
 
 ### Run Instructions
 ```bash
-    ./iemcd -u root -p password -d SD -c /dev/ttyUSB0 -b B38400 -s 4608 -v 1504
+    ./iemcd -u root -p password -d SD -c /dev/ttyUSB0 -b B38400 -s 4608 -v 1504 -t 500
 ```
 ### Command Arguments
 -u :: database username
@@ -25,6 +25,7 @@ mysql++-devel mysql-connector-c++-devel
 -b :: Control Board tty device baud rate
 -v :: USB Vendor ID
 -s :: USB Product ID
+-t :: USB Read Timeout (ms)
 
 ### Sample Barcode
 The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 inclusively.
