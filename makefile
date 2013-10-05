@@ -31,7 +31,7 @@ libhidapi-hidraw.so: $(COBJS)
 
 # Objects
 $(COBJS): %.o: %.c
-	$(CC) $(CFLAGS) -c $(INCLUDES) $< -o $@
+	$(CC) $(CFLAGS) -c $(INCLUDES) ./hidapi/$< -o $@
 
 $(CPPOBJS): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
