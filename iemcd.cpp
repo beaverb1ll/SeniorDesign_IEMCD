@@ -250,7 +250,6 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
     }
     
     
-
     for (i = 0; i < status; i++)
     {
         syslog(LOG_INFO, "DEBUG :: HID READ: %u ", buf[i]);
@@ -278,8 +277,8 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
  */
 int convertUSBInput(unsigned char* inputChar)
 {
-    unsigned int modifier = (unsigned int)inputChar[0];
-	unsigned int input = (unsigned int)inputChar[2];
+    int modifier = (int)inputChar[0];
+	int input = (int)inputChar[2];
 	
 	syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
     syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
@@ -292,7 +291,7 @@ int convertUSBInput(unsigned char* inputChar)
 
 	if (input == 0)
 	{
-			return 0;
+		return 0;
 	}
 	if (input == 39)  // this is a zero from the barcode scanner
 	{
