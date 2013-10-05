@@ -14,11 +14,11 @@ LDFLAGS  ?= -Wall -lmysqlclient -g
 
 
 COBJS     = hid.o
-CPPOBJS   = iemcd.o
+CPPOBJS   = $(EXECUTABLE).o
 OBJS      = $(COBJS) $(CPPOBJS)
 LIBS_UDEV = `pkg-config libudev --libs` -lrt
 LIBS      = $(LIBS_UDEV)
-INCLUDES ?= -I../hidapi `pkg-config libusb-1.0 --cflags`
+INCLUDES ?= -I./hidapi `pkg-config libusb-1.0 --cflags`
 
 
 # Console Test Program
