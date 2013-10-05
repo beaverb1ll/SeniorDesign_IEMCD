@@ -206,7 +206,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         } 
         else if(returnedValue < 0)
         {
-        	syslog(LOG_INFO, "DEBUG :: Invalid character read, skipping barcode");
+        	syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode");
         	return -1;
         }
 
@@ -218,6 +218,13 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
     return 0;
 }
 
+/*
+ * Valid character: ascii value
+ * Read Timout:     -1   
+ * Read Failure:    program exits
+ *
+ *
+ */
 char readLetterFromUSB(hid_device* handle, int nonblocking)
 {
     unsigned char buf[9];
@@ -226,16 +233,21 @@ char readLetterFromUSB(hid_device* handle, int nonblocking)
     if (nonblocking > 0)
     {
         status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
+        if(status < 1) {
+            syslog(LOG_INFO, "DEBUG :: ReadTimeout. Exiting...");
+            return -1;
+        }
     } 
     else 
     {
-        status = hid_read(handle, buf, sizeof(buf));    
+        status = hid_read(handle, buf, sizeof(buf));
+        if(status < 1) {
+            syslog(LOG_INFO, "ERROR :: Unable to read from USB in getBarcodeUSB. Exiting...");
+            exit(1);
+        }  
     }
     
-    if(status < 1) {
-        syslog(LOG_INFO, "ERROR :: Unable to read from USB in getBarcodeUSB. Exiting...");
-        exit(1);
-    }
+    
 
     for (i = 0; i < status; i++)
     {
@@ -243,15 +255,14 @@ char readLetterFromUSB(hid_device* handle, int nonblocking)
     }
 
     returnedChar = convertUSBInput(buf);
-    if (returnedChar == 0)
+    if (returnedChar < 1)
     {
-        /// uh oh, invalid char, close and try again.
-        syslog(LOG_INFO, "DEBUG :: Bad character read, skipping barcode scan");
-        syslog(LOG_INFO, "DEBUG :: Bad Char Read: %c", buf[2]);
-        return -1;
-    }
-    if (returnedChar < 0) 
-    {
+        // discard all incoming chars for this scan
+        syslog(LOG_INFO, "DEBUG :: Invalid character read. consuming incoming chars.");
+        while(status < 0)
+        {
+            status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
+        }
         return -1;
     }
 
