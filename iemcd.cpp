@@ -208,7 +208,8 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         } 
         else if(returnedValue < 0)
         {
-        	syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode");
+            barcode[i] = '\0';
+        	syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode: %s", barcode);
         	return -1;
         }
 
@@ -217,6 +218,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         i++;
     }
     barcode[i] = '\0';
+    syslog(LOG_INFO, "DEBUG :: Received barcode: %s", barcode);
     return 0;
 }
 
