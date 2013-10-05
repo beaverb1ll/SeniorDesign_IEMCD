@@ -37,6 +37,8 @@ struct settings {
         int cbBaud;
         int barcodeLength;
         int usbTimeout;
+
+        // open devices
         hid_device* barcodeUSBDevice;
         MYSQL *con_SQL;
         int fd_CB;
@@ -234,7 +236,7 @@ char readLetterFromUSB(hid_device* handle, int nonblocking)
     {
         status = hid_read_timeout(handle, buf, sizeof(buf), currentSettings->usbTimeout);
         if(status < 1) {
-            syslog(LOG_INFO, "DEBUG :: ReadTimeout. Exiting...");
+            syslog(LOG_INFO, "DEBUG :: ReadTimeout.");
             return -1;
         }
     } 
@@ -774,12 +776,13 @@ void closeConnections(void)
 
 void logInputArgs(struct settings *settings)
 {
-    syslog(LOG_INFO, "   DB Name    :: %s", settings->dbName);
-    syslog(LOG_INFO, "   DB User    :: %s", settings->dbUsername);
-    syslog(LOG_INFO, "   DB Passwod :: %s", settings->dbPasswd);
-    syslog(LOG_INFO, "   CB Device  :: %s", settings->cbDevice);
-    syslog(LOG_INFO, "   CB Baud    :: %d", settings->cbBaud);
-    syslog(LOG_INFO, "   Bar VID    :: %d", settings->barcode_VID);
-    syslog(LOG_INFO, "   Bar PID    :: %d", settings->barcode_PID);
-    syslog(LOG_INFO, "   Bar Length :: %d", settings->barcodeLength);
+    syslog(LOG_INFO, "   DB Name     :: %s", settings->dbName);
+    syslog(LOG_INFO, "   DB User     :: %s", settings->dbUsername);
+    syslog(LOG_INFO, "   DB Passwod  :: %s", settings->dbPasswd);
+    syslog(LOG_INFO, "   CB Device   :: %s", settings->cbDevice);
+    syslog(LOG_INFO, "   CB Baud     :: %d", settings->cbBaud);
+    syslog(LOG_INFO, "   Bar VID     :: %d", settings->barcode_VID);
+    syslog(LOG_INFO, "   Bar PID     :: %d", settings->barcode_PID);
+    syslog(LOG_INFO, "   Bar Length  :: %d", settings->barcodeLength);
+    syslog(LOG_INFO, "   USB Timeout :: %d", settings->usbTimeout);
 }
