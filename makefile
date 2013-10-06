@@ -1,50 +1,23 @@
-EXECUTABLE=iemcd
+EXECUTABLE = iemcd
 
-all: iemcd libs
+CC      = gcc
+CFLAGS  = -Wall -lmysqlclient -l'hidapi-hidraw' -g -fpic
+C_SRCS	= $(EXECUTABLE).c
 
-libs: libhidapi-hidraw.so
-
-CC       ?= gcc
-CFLAGS   ?= -Wall -lmysqlclient -g -fpic
-
-CXX      ?= g++
-CXXFLAGS ?= -Wall -lmysqlclient -g -fpic
-
-LDFLAGS  ?= -Wall -lmysqlclient -g
+all: $(EXECUTABLE)
 
 
-COBJS     = hid.o
-CPPOBJS   = $(EXECUTABLE).o
-OBJS      = $(COBJS) $(CPPOBJS)
-LIBS_UDEV = `pkg-config libudev --libs` -lrt
-LIBS      = $(LIBS_UDEV)
-INCLUDES ?= -I./hidapi `pkg-config libusb-1.0 --cflags`
-
-
-# Console Test Program
-iemcd: $(COBJS) $(CPPOBJS)
-	$(CXX) $(LDFLAGS) $^ $(LIBS_UDEV) -o $@
-
-# Shared Libs
-libhidapi-hidraw.so: $(COBJS)
-	$(CC) $(LDFLAGS) $(LIBS_UDEV) -shared -fpic -Wl,-soname,$@.0 $^ -o $@
-
-# Objects
-$(COBJS): %.o: %.c
-	$(CC) $(CFLAGS) -c $(INCLUDES) ./hidapi/$< -o $@
-
-$(CPPOBJS): %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $(INCLUDES) $< -o $@
+$(EXECUTABLE):
+	$(CC) $(CFLAGS) $(C_SRCS) -o $(EXECUTABLE)
 
 install:
 	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
-	install $(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
-	install $(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
+	install ./systemd/$(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
+	install ./systemd/$(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
 	systemctl daemon-reload
 	systemctl restart $(EXECUTABLE).service
 
 clean:
-	rm -f $(OBJS) hidtest-hidraw libhidapi-hidraw.so iemcd.o
+	rm -f $(EXECUTABLE)
 
 .PHONY: clean libs
-
