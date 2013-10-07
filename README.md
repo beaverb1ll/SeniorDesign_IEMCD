@@ -5,12 +5,16 @@ drink ingredients are sent to the Control Board through the CB tty device.
 Upon successful dispensing, the SQL database will be updated. Program logging 
 is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 
-Packages:
-mysql++-devel mysql-connector-c++-devel
+### Packages
+#### Ubuntu
+```bash
+    apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev
+```
 
 ### Compile Instructions
 ```bash
     make
+    make install
 ```
 
 ### Run Instructions
@@ -40,36 +44,34 @@ INSERT INTO `SD`.`orderTable`
 (`id`,
 `orderID`,
 `orderTime`,
-`pickupTime`,
+`expired`,
 `pickedUp`,
 `Ing0`,
 `Ing1`,
 `Ing2`,
 `Ing3`,
 `Ing4`,
-`Ing5`,
-`expired`)
+`Ing5` )
 VALUES
 (
-15,
-0123456789012345678901234567890123456789,
-100,
+0,
+0,
 0,
 false,
-10,
-11,
-12,
-13,
-14,
-15,
-false
+false,
+50,
+50,
+50,
+50,
+50,
+50
 );
 ```
 
 ### SQL CREATE
 ```bash
 CREATE TABLE `orderTable` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO,
   `orderID` varchar(50) DEFAULT NULL,
   `orderTime` int(11) DEFAULT '0',
   `pickupTime` int(11) DEFAULT '0',
@@ -82,5 +84,5 @@ CREATE TABLE `orderTable` (
   `Ing5` int(11) DEFAULT NULL,
   `expired` varchar(10) DEFAULT 'false',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1$$
+) ENGINE=InnoDB DEFAULT;
 ```
