@@ -1,4 +1,7 @@
 Description=Improved Embedded Master Control Daemon
+Requires=mysqld.service
+After=mysqld.service
+Wants=mysqld.service
 
 [Service]
 Type=forking
