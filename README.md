@@ -11,6 +11,18 @@ is sent to /var/log/messages on RHEL systems and is marked by iemcd.
     apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev
 ```
 
+### Dependancies
+##### hidAPI
+```bash
+cd /tmp
+git clone https://github.com/signal11/hidapi.git
+cd hidapi
+./bootstrap
+./configure --prefix=/usr
+make
+make install
+```
+
 ### Compile Instructions
 ```bash
     make
