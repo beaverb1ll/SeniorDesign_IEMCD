@@ -5,15 +5,11 @@ drink ingredients are sent to the Control Board through the CB tty device.
 Upon successful dispensing, the SQL database will be updated. Program logging 
 is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 
-<<<<<<< HEAD
 ### Packages
 #### Ubuntu
 ```bash
     apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev
 ```
-=======
-Packages:
->>>>>>> master
 
 ### Compile Instructions
 ```bash
@@ -58,12 +54,6 @@ INSERT INTO `SD`.`orderTable`
 `Ing5` )
 VALUES
 (
-<<<<<<< HEAD
-=======
-0,
-0,
-0,
->>>>>>> master
 0,
 0,
 0,
@@ -74,23 +64,16 @@ false,
 50,
 50,
 50,
-<<<<<<< HEAD
 50
-=======
-50,
-false
->>>>>>> master
 );
 ```
 
 ### SQL CREATE
 ```bash
+CREATE DATABASE SD;
+use SD;
 CREATE TABLE `orderTable` (
-<<<<<<< HEAD
-  `id` int(11) NOT NULL AUTO,
-=======
   `id` int(11) NOT NULL AUTO_INCREMENT,
->>>>>>> master
   `orderID` varchar(50) DEFAULT NULL,
   `orderTime` int(11) DEFAULT '0',
   `expired` varchar(10) DEFAULT 'false',
@@ -102,9 +85,6 @@ CREATE TABLE `orderTable` (
   `Ing4` int(11) DEFAULT NULL,
   `Ing5` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT;
-=======
 );
->>>>>>> master
 ```
