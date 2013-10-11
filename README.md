@@ -1,4 +1,5 @@
-# What is this?
+# Improved Embedded Master Control Daemon
+###  What is this?
 This application listens on the specified serial tty device for a barcode to
 come in. When a barcode is accepted, the SQL database will be queried and the 
 drink ingredients are sent to the Control Board through the CB tty device.
@@ -8,7 +9,7 @@ is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 ### Packages
 #### Ubuntu
 ```bash
-    apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev
+    apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev libusb-1.0
 ```
 
 ### Dependancies
@@ -31,7 +32,7 @@ make install
 
 ### Run Instructions
 ```bash
-    ./iemcd -u root -p password -d SD -c /dev/ttyUSB0 -b B38400 -s 4608 -v 1504 -t 500
+    /usr/bin/iemcd -u root -p password -d SD -c /dev/ttyO4 -b B38400 -v 1504 -s 4608 -t 500
 ```
 ### Command Arguments
 -u :: database username
