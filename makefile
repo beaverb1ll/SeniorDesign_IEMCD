@@ -1,11 +1,11 @@
 EXECUTABLE = iemcd
 
 CC      = gcc
-CFLAGS  = -Wall `mysql_config --cflags` -l'hidapi-hidraw' -g -fpic
+CFLAGS  = -Wall -L/usr/lib64/mysql -L/usr/lib -lmysqlclient -l'hidapi-hidraw'
 C_SRCS	= $(EXECUTABLE).c
 
-all: $(EXECUTABLE)
 
+all: $(EXECUTABLE)
 
 $(EXECUTABLE):
 	$(CC) $(CFLAGS) $(C_SRCS) -o $(EXECUTABLE)
