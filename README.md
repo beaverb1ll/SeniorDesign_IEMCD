@@ -14,7 +14,7 @@ is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 #### Arch
 ```bash
     # Building Tools
-    pacman -S make gcc automake autoconf pkg-config apache php php-apache mariadb vim git
+    pacman -S make gcc automake autoconf pkg-config apache php php-apache mariadb vim git libtool libusb
 ```
 
 ### Dependancies
@@ -28,7 +28,7 @@ cd hidapi
 make
 make install
 ldconfig
-ldconfig | grep hid
+ldconfig -v | grep hid
 ```
 
 ### Compile Instructions
