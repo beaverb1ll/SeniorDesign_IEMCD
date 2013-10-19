@@ -14,10 +14,10 @@ $(EXECUTABLE):
 
 install:
 	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
-#	install ./systemd/$(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
+	install ./systemd/$(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
 	install ./systemd/$(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
-#	systemctl daemon-reload
-#	systemctl restart $(EXECUTABLE).service
+	systemctl daemon-reload
+	systemctl restart $(EXECUTABLE).service
 
 clean:
 	rm -f $(EXECUTABLE)
