@@ -407,7 +407,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         // create query string
         strcpy(queryString, baseUpdate);
         strcat(queryString, barcode);
-        strcat(queryString, "\"")
+        strcat(queryString, "\"");
 
         // update sql
         if (mysql_query(con, queryString))
