@@ -35,6 +35,7 @@ ldconfig -v | grep hid
 ```bash
     make
     make install
+    mysql_secure_installation
 ```
 
 ### Run Instructions
@@ -105,6 +106,5 @@ CREATE TABLE `orderTable` (
   `Ing4` int(11) DEFAULT NULL,
   `Ing5` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT;
 );
 ```

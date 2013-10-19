@@ -20,7 +20,7 @@
 #define TRUE 1
 #define FALSE 0
 
-#define BARCODE_LENGTH 40
+#define BARCODE_LENGTH 34
 #define NUM_INGREDIENTS 6
 #define MAX_SECONDS_RESERVED 600 // 10 minutes
 

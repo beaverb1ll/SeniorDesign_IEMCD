@@ -1,6 +1,9 @@
+[Unit]
 Description=Improved Embedded Master Control Daemon
 Requires=mysqld.service
+Requires=BBB-UART4.service
 After=mysqld.service
+After=BBB-UART4.service
 Wants=mysqld.service
 
 [Service]
