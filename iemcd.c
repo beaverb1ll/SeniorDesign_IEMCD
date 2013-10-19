@@ -591,7 +591,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     	syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
     	return 1;
     }
-    write(cb_fd, "Y");
+    write(cb_fd, "Y", 1);
 
     return 0;
 }
