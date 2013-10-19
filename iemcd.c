@@ -583,6 +583,15 @@ int dispenseDrink(int cb_fd, int *ingredArray)
         return 1;
     }
 
+
+    // wait for response
+    if(getSerialAck()) 
+    {
+    	syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
+    	return 1;
+    }
+    write(cb_fd, "Y");
+
     return 0;
 }
 
@@ -595,15 +604,24 @@ int dispenseDrink(int cb_fd, int *ingredArray)
  */
 int sendCommand_getAck(int fd, const char *command)
 {
-    char buffer[5];
-    int numRead;
+    
 
     write (fd, command, sizeof(command));
     syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
+    
+    return getSerialAck();
+}
+
+
+int getSerialAck(void) 
+{
+	char buffer[5];
+    int numRead;
+
     // clear receive buffer
     tcflush(fd, TCIFLUSH);
 
-    // wait for response
+	 // wait for response
     numRead = read (fd, buffer, sizeof(buffer));
     buffer[numRead] = '\0';
 
@@ -622,6 +640,10 @@ int sendCommand_getAck(int fd, const char *command)
         case 'y':
                 // fall through
         case 'Y':
+        		// fall through
+        case 'z':
+        		// fall through
+        case 'Z':
             return 0;
             break;
 
