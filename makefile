@@ -16,6 +16,8 @@ install:
 	install $(EXECUTABLE) /usr/bin/$(EXECUTABLE)
 	install ./systemd/$(EXECUTABLE).service /usr/lib/systemd/system/$(EXECUTABLE).service
 	install ./systemd/$(EXECUTABLE).conf /etc/$(EXECUTABLE).conf
+	install ./systemd/BBB-UART4.service /usr/lib/systemd/system/BBB-UART4.service
+	install ./systemd/enable-BBB-UART4.sh /usr/bin/enable-BB-UART4.sh
 	systemctl daemon-reload
 	systemctl restart $(EXECUTABLE).service
 
