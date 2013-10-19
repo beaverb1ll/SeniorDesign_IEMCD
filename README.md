@@ -11,6 +11,11 @@ is sent to /var/log/messages on RHEL systems and is marked by iemcd.
 ```bash
     apt-get install make gcc g++ libmysqlclient-dev mysql-server apache2 libapache2-mod-php5 libapache2-mod-auth-mysql php5-mysql vim git automake autoconf libtool libudev-dev pkg-config libusb-dev libusb-1.0
 ```
+#### Arch
+```bash
+    # Building Tools
+    pacman -S make gcc automake autoconf pkg-config apache php php-apache mariadb vim git
+```
 
 ### Dependancies
 ##### hidAPI
@@ -22,6 +27,8 @@ cd hidapi
 ./configure --prefix=/usr
 make
 make install
+ldconfig
+ldconfig | grep hid
 ```
 
 ### Compile Instructions
