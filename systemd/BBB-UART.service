@@ -1,0 +1,10 @@
+[Unit]
+Description=BBB UART4 Enable
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/bin/enable-BBB-UART4.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
