@@ -57,6 +57,7 @@ int readLetterFromUSB(hid_device* handle, int nonblocking);
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
 int dispenseDrink(int cb_fd, int *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
+int getSerialAck(int fd);
 int* getIngredFromSQL(MYSQL *sql_con, const char *query);
 struct settings* parseArgs(int argc, char* const* argv);
 int baudToInt(const char *bRate);
@@ -585,7 +586,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 
 
     // wait for response
-    if(getSerialAck()) 
+    if(getSerialAck(cb_fd)) 
     {
     	syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
     	return 1;
@@ -609,11 +610,11 @@ int sendCommand_getAck(int fd, const char *command)
     write (fd, command, sizeof(command));
     syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
     
-    return getSerialAck();
+    return getSerialAck(fd);
 }
 
 
-int getSerialAck(void) 
+int getSerialAck(int fd) 
 {
 	char buffer[5];
     int numRead;
