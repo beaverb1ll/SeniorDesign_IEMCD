@@ -357,8 +357,8 @@ hid_device* openUSB(int vID, int pID)
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 {
     char barcode[BARCODE_LENGTH + 1];
-    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=";
-    char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=";
+    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=\"";
+    char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=\"";
     char queryString[200];
     int *ingredients, barcodeValid;
 
@@ -378,6 +378,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         // construct query string
         strcpy(queryString, baseSelect);
         strcat(queryString, barcode);
+        strcat(queryString, "\"");
         syslog(LOG_INFO, "DEBUG :: Barcode:%s  Query string: %s", barcode,  queryString);
 
         // query sql for barcode
@@ -406,6 +407,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         // create query string
         strcpy(queryString, baseUpdate);
         strcat(queryString, barcode);
+        strcat(queryString, "\"")
 
         // update sql
         if (mysql_query(con, queryString))
