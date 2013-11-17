@@ -208,7 +208,7 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
 
         if (returnedValue == 0)
         {
-            syslog(LOG_INFO, "DEBUG :: Reserved character read, skipping character");
+            // syslog(LOG_INFO, "DEBUG :: Reserved character read, skipping character");
             continue;
         } 
         else if(returnedValue < 0)
@@ -266,7 +266,7 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
     if (returnedChar < 0)
     {
         // discard all incoming chars for this scan
-        syslog(LOG_INFO, "DEBUG :: Invalid character read %d. consuming incoming chars.", returnedChar);
+        // syslog(LOG_INFO, "DEBUG :: Invalid character read %d. consuming incoming chars.", returnedChar);
         consumeUSB(handle);
         return -1;
     }
@@ -297,8 +297,8 @@ int convertUSBInput(unsigned char* inputChar)
     int modifier = (int)inputChar[0];
 	int input = (int)inputChar[2];
 	
-	syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
-    syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
+	// syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
+    // syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
 
     if (input > 3 && input < 30) // this is from a-z 
     {
@@ -314,7 +314,7 @@ int convertUSBInput(unsigned char* inputChar)
 	}
     if (modifier != 0) // if any modifier is presed here, its not valid
     {
-        syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
+        // syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
         return -1;
     }
 
@@ -329,7 +329,7 @@ int convertUSBInput(unsigned char* inputChar)
 	}
 	
     // something's wrong if reached here, return invalid char and skip barcode
-    syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
+    // syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
 	return -1;
 }
 
@@ -358,7 +358,7 @@ hid_device* openUSB(int vID, int pID)
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 {
     char barcode[BARCODE_LENGTH + 1];
-    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE orderID=\"";
+    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE pickedup='false' AND expired='false' AND orderID=\"";
     char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=\"";
     char queryString[200];
     int *ingredients, barcodeValid;
@@ -702,7 +702,7 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
     if (num_rows != 1)
     {
-        syslog(LOG_INFO, "DEBUG :: Invalid number of rows returned for query: %s", query);
+        syslog(LOG_INFO, "DEBUG :: Order not found, has expired, or has already been picked up: %s", query);
         return NULL;
     }
 
@@ -710,29 +710,29 @@ int* getIngredFromSQL(MYSQL *sql_con, const char *query)
 
 
     // ========= DEBUG =====================
-    int numFields = mysql_num_fields(result);
-    int ii;
-    for( ii=0; ii < numFields; ii++)
-    {
-        syslog(LOG_INFO, "DEBUG :: %d : %s",ii, row[ii] ? row[ii] : "NULL");  // Not NULL then print
-    }
+    // int numFields = mysql_num_fields(result);
+    // int ii;
+    // for( ii=0; ii < numFields; ii++)
+    // {
+    //     syslog(LOG_INFO, "DEBUG :: %d : %s",ii, row[ii] ? row[ii] : "NULL");  // Not NULL then print
+    // }
     // ======== END DEBUG ==================
 
     // verify time hasn't expired
-    if (!strcmp("true", row[NUM_INGREDIENTS+1]))
-    {
-        syslog(LOG_INFO, "DEBUG :: Drink order expired. skipping...");
-        return NULL;
-    }
-    syslog(LOG_INFO, "DEBUG :: Drink order not expired. Continuing... ");
+    // if (!strcmp("true", row[NUM_INGREDIENTS+1]))
+    // {
+    //     syslog(LOG_INFO, "DEBUG :: Drink order expired. skipping...");
+    //     return NULL;
+    // }
+    // syslog(LOG_INFO, "DEBUG :: Drink order not expired. Continuing... ");
 
 
-    // verify drink has not been picked up yet.
-    if(!strcmp("true", row[NUM_INGREDIENTS]))
-    {
-        syslog(LOG_INFO, "DEBUG :: Drink already picked up");
-        return NULL;
-    }
+    // // verify drink has not been picked up yet.
+    // if(!strcmp("true", row[NUM_INGREDIENTS]))
+    // {
+    //     syslog(LOG_INFO, "DEBUG :: Drink already picked up");
+    //     return NULL;
+    // }
     syslog(LOG_INFO, "DEBUG :: Drink has not been picked up");
 
     ingred = (int*)malloc(sizeof(int) * NUM_INGREDIENTS);
