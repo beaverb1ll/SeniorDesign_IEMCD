@@ -551,7 +551,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 
 
     // ask for clear to send
-    if(sendCommand_getAck(cb_fd, "Hello"))
+    if(sendCommand_getAck(cb_fd, "D"))
     {
         // uh oh, something went wrong.
         syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
@@ -607,7 +607,7 @@ int sendCommand_getAck(int fd, const char *command)
 {
     
 
-    write (fd, command, sizeof(command));
+    write (fd, command, strlen(command));
     syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
     
     return getSerialAck(fd);
