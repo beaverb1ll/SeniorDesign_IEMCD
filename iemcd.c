@@ -118,8 +118,8 @@ int set_interface_attribs (int fd, int speed, int parity)
             exit(1);
         }
 
-        cfsetospeed (&tty, speed);
-        cfsetispeed (&tty, speed);
+        cfsetospeed (&tty, (speed_t)B9600);
+        cfsetispeed (&tty, (speed_t)B9600);
 
         tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
         // disable IGNBRK for mismatched speed tests; otherwise receive break
