@@ -632,8 +632,8 @@ int getSerialAck(int fd)
         return 1;
     }
 
-    switch (buffer[0])
     syslog(LOG_INFO, "DEBUG :: ACK received: %c", buffer[0]);
+    switch (buffer[0])
     {
         case 'f':
                 // fall through
