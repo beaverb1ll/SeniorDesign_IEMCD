@@ -104,7 +104,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
-    set_blocking (fd, blockingAmnt, 1);         // block for BARCODE_LENGTH chars or .1 sec
+    set_blocking (fd, blockingAmnt, 5);         // block for BARCODE_LENGTH chars or .1 sec
     return fd;
 }
 
