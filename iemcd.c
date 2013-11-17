@@ -645,6 +645,7 @@ int getSerialAck(int fd)
         case 'z':
         		// fall through
         case 'Z':
+            syslog(LOG_INFO, "DEBUG :: Received f/F/y/Y/z/Z for ACK");
             return 0;
             break;
 
@@ -652,7 +653,9 @@ int getSerialAck(int fd)
                 // fall through
         case 'N':
                 // fall through
+            syslog(LOG_INFO, "DEBUG :: Received n/N for ACK");
         default:
+            syslog(LOG_INFO, "DEBUG :: Received other ACK");
             return 1;
     }
 }
