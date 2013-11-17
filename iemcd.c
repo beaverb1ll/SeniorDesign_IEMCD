@@ -551,7 +551,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 
 
     // ask for clear to send
-    if(sendCommand_getAck(cb_fd, "B"))
+    if(sendCommand_getAck(cb_fd, "Hello"))
     {
         // uh oh, something went wrong.
         syslog(LOG_INFO, "DEBUG :: Comm error with dispenseDrink");
