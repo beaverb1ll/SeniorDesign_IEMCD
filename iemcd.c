@@ -620,7 +620,7 @@ int getSerialAck(int fd)
     int numRead;
 
     // clear receive buffer
-    tcflush(fd, TCIFLUSH);
+    // tcflush(fd, TCIFLUSH);
 
 	 // wait for response
     numRead = read (fd, buffer, sizeof(buffer));
