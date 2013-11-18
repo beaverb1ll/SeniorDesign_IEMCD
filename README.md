@@ -51,6 +51,7 @@ ldconfig -v | grep hid
 -v :: USB Vendor ID
 -s :: USB Product ID
 -t :: USB Read Timeout (ms)
+-a :: tty Read Timeout (ds)
 
 ### Sample Barcode
 The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 and a-z.

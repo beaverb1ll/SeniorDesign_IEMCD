@@ -37,6 +37,7 @@ struct settings {
         int cbBaud;
         int barcodeLength;
         int usbTimeout;
+        int ttyTimeout;
 
         // open devices
         hid_device* barcodeUSBDevice;
@@ -455,7 +456,7 @@ struct settings* parseArgs(int argc, char* const* argv)
         exit(1);
     }
 
-    while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:t:")) != -1)
+    while ((opt = getopt(argc, argv, "u:p:d:c:b:v:s:t:a:")) != -1)
     {
         switch(opt)
         {
@@ -491,6 +492,9 @@ struct settings* parseArgs(int argc, char* const* argv)
                     // USB Read Timeout
                     allSettings->usbTimeout = atoi(optarg);
                     break;
+            case 'a':
+                    // serial read timeout
+                    allSettings->ttyTimeout = atoi(optarg);
 
             case '?':
                     syslog(LOG_INFO, "ERROR :: Invalid startup argument: %c :: Exiting...", optopt);
