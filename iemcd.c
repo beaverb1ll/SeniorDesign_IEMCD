@@ -118,29 +118,49 @@ int set_interface_attribs (int fd, int speed, int parity)
             exit(1);
         }
 
-        cfsetospeed (&tty, (speed_t)B9600);
-        cfsetispeed (&tty, (speed_t)B9600);
+        // cfsetospeed (&tty, (speed_t)B9600);
+        // cfsetispeed (&tty, (speed_t)B9600);
+        // tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+        // // disable IGNBRK for mismatched speed tests; otherwise receive break
+        // // as \000 chars
+        // tty.c_iflag &= ~IGNBRK;         // ignore break signal
+        // tty.c_lflag = 0;                // no signaling chars, no echo,
+        //                                 // no canonical processing
+        // tty.c_oflag = 0;                // no remapping, no delays
+        // tty.c_cc[VMIN]  = 0;            // read doesn't block
+        // tty.c_cc[VTIME] = 5;            // 10 seconds read timeout
 
-        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-        // disable IGNBRK for mismatched speed tests; otherwise receive break
-        // as \000 chars
-        tty.c_iflag &= ~IGNBRK;         // ignore break signal
-        tty.c_lflag = 0;                // no signaling chars, no echo,
-                                        // no canonical processing
-        tty.c_oflag = 0;                // no remapping, no delays
-        tty.c_cc[VMIN]  = 0;            // read doesn't block
-        tty.c_cc[VTIME] = 5;            // 10 seconds read timeout
+        // tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
 
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+        // tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+        //                                 // enable reading
+        // tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+        // tty.c_cflag |= parity;
+        // tty.c_cflag &= ~CSTOPB;
+        // tty.c_cflag &= ~CRTSCTS;
 
-        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-                                        // enable reading
-        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-        tty.c_cflag |= parity;
-        tty.c_cflag &= ~CSTOPB;
-        tty.c_cflag &= ~CRTSCTS;
+/* Set Baud Rate */
+cfsetospeed (&tty, (speed_t)B9600);
+cfsetispeed (&tty, (speed_t)B9600);
 
-        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+/* Setting other Port Stuff */
+tty.c_cflag     &=  ~PARENB;        // Make 8n1
+tty.c_cflag     &=  ~CSTOPB;
+tty.c_cflag     &=  ~CSIZE;
+tty.c_cflag     |=  CS8;
+
+tty.c_cflag     &=  ~CRTSCTS;       // no flow control
+tty.c_cc[VMIN]      =   1;                  // read doesn't block
+tty.c_cc[VTIME]     =   5;                  // 0.5 seconds read timeout
+tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
+
+/* Make raw */
+cfmakeraw(&tty);
+
+/* Flush Port, then applies attributes */
+tcflush( fd, TCIFLUSH );
+
+        if ( tcsetattr ( fd, TCSANOW, &tty ) != 0)
         {
             syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
             exit(1);
