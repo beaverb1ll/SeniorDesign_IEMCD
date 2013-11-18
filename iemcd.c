@@ -574,7 +574,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     const char *endString = "T";
     char command[50];
 
-    tcflush(fd, TCIFLUSH);
+    tcflush(cb_fd, TCIFLUSH);
 
     // ask for clear to send
     if(sendCommand_getAck(cb_fd, "D"))
