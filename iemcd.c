@@ -574,6 +574,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     const char *endString = "T";
     char command[50];
 
+    tcflush(fd, TCIFLUSH);
 
     // ask for clear to send
     if(sendCommand_getAck(cb_fd, "D"))
@@ -616,7 +617,7 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     	syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
     	return 1;
     }
-    write(cb_fd, "Y", 1);
+    // write(cb_fd, "Y", 1);
 
     return 0;
 }
