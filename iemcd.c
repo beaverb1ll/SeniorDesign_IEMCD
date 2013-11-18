@@ -616,24 +616,29 @@ int sendCommand_getAck(int fd, const char *command)
 
 int getSerialAck(int fd) 
 {
-	char buffer[5];
+	char buffer;
     int numRead;
 
     // clear receive buffer
     // tcflush(fd, TCIFLUSH);
 
 	 // wait for response
-    numRead = read (fd, buffer, sizeof(buffer));
-    buffer[numRead] = '\0';
+    numRead = read(fd, buffer, 1);
+
+    if (numRead < 0)
+    {
+    		syslog(LOG_INFO, "DEBUG :: Error returned from read");
+    		return 1;
+    }
 
     if(numRead < 1)
     {
-        syslog(LOG_INFO, "DEBUG :: Error reading ack from fd");
+        syslog(LOG_INFO, "DEBUG :: No chars read from file descriptor fd");
         return 1;
     }
 
-    syslog(LOG_INFO, "DEBUG :: ACK received: %c", buffer[0]);
-    switch (buffer[0])
+    syslog(LOG_INFO, "DEBUG :: ACK received: %c", buffer);
+    switch (buffer)
     {
         case 'f':
                 // fall through
