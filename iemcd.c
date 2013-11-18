@@ -616,7 +616,7 @@ int sendCommand_getAck(int fd, const char *command)
 
 int getSerialAck(int fd) 
 {
-	char buffer;
+	char buffer[1];
     int numRead;
 
     // clear receive buffer
