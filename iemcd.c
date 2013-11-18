@@ -105,7 +105,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
-    set_blocking (fd, blockingAmnt, 100);         // block for BARCODE_LENGTH chars or .1 sec
+    set_blocking (fd, blockingAmnt, currentSettings->ttyTimeout);         // http://linux.die.net/man/3/termios for info
     return fd;
 }
 
@@ -631,7 +631,6 @@ int dispenseDrink(int cb_fd, int *ingredArray)
 int sendCommand_getAck(int fd, const char *command)
 {
     
-
     write (fd, command, strlen(command));
     syslog(LOG_INFO, "DEBUG :: sending command to CB: %s", command);
     
@@ -641,14 +640,14 @@ int sendCommand_getAck(int fd, const char *command)
 
 int getSerialAck(int fd) 
 {
-	char buffer[1];
+	char charRead;
     int numRead;
 
     // clear receive buffer
     // tcflush(fd, TCIFLUSH);
 
 	 // wait for response
-    numRead = read(fd, buffer, 1);
+    numRead = read(fd, &charRead, 1);
 
     if (numRead < 0)
     {
@@ -662,8 +661,8 @@ int getSerialAck(int fd)
         return 1;
     }
 
-    syslog(LOG_INFO, "DEBUG :: ACK received: %c", buffer[0]);
-    switch (buffer[0])
+    syslog(LOG_INFO, "DEBUG :: ACK received: %c", charRead);
+    switch (charRead)
     {
         case 'f':
                 // fall through
@@ -685,6 +684,8 @@ int getSerialAck(int fd)
         case 'N':
                 // fall through
             syslog(LOG_INFO, "DEBUG :: Received n/N for ACK");
+            return 1;
+
         default:
             syslog(LOG_INFO, "DEBUG :: Received other ACK");
             return 1;
