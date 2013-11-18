@@ -98,7 +98,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
 {
     int fd;
 
-    fd = open (ttyName, O_RDWR | O_NOCTTY);
+    fd = open (ttyName, O_RDWR | O_NOCTTY, O_SYNC );
     if (fd < 0)
     {
         syslog(LOG_INFO, "ERROR :: error %d returned while opening serial device %s: %s", errno, ttyName, strerror (errno));
@@ -111,62 +111,62 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
 
 int set_interface_attribs (int fd, int speed, int parity)
 {
-        struct termios tty;
-        memset (&tty, 0, sizeof tty);
-        if (tcgetattr (fd, &tty) != 0)
-        {
-            syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
-            exit(1);
-        }
+    struct termios tty;
+    memset (&tty, 0, sizeof tty);
+    if (tcgetattr (fd, &tty) != 0)
+    {
+        syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
+        exit(1);
+    }
 
-        // cfsetospeed (&tty, (speed_t)B9600);
-        // cfsetispeed (&tty, (speed_t)B9600);
-        // tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-        // // disable IGNBRK for mismatched speed tests; otherwise receive break
-        // // as \000 chars
-        // tty.c_iflag &= ~IGNBRK;         // ignore break signal
-        // tty.c_lflag = 0;                // no signaling chars, no echo,
-        //                                 // no canonical processing
-        // tty.c_oflag = 0;                // no remapping, no delays
-        // tty.c_cc[VMIN]  = 0;            // read doesn't block
-        // tty.c_cc[VTIME] = 5;            // 10 seconds read timeout
+    // cfsetospeed (&tty, (speed_t)B9600);
+    // cfsetispeed (&tty, (speed_t)B9600);
+    // tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+    // // disable IGNBRK for mismatched speed tests; otherwise receive break
+    // // as \000 chars
+    // tty.c_iflag &= ~IGNBRK;         // ignore break signal
+    // tty.c_lflag = 0;                // no signaling chars, no echo,
+    //                                 // no canonical processing
+    // tty.c_oflag = 0;                // no remapping, no delays
+    // tty.c_cc[VMIN]  = 0;            // read doesn't block
+    // tty.c_cc[VTIME] = 5;            // 10 seconds read timeout
 
-        // tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+    // tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
 
-        // tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-        //                                 // enable reading
-        // tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-        // tty.c_cflag |= parity;
-        // tty.c_cflag &= ~CSTOPB;
-        // tty.c_cflag &= ~CRTSCTS;
+    // tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+    //                                 // enable reading
+    // tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+    // tty.c_cflag |= parity;
+    // tty.c_cflag &= ~CSTOPB;
+    // tty.c_cflag &= ~CRTSCTS;
 
-/* Set Baud Rate */
-cfsetospeed (&tty, (speed_t)B9600);
-cfsetispeed (&tty, (speed_t)B9600);
+    /* Set Baud Rate */
+    cfsetospeed (&tty, (speed_t)B9600);
+    cfsetispeed (&tty, (speed_t)B9600);
 
-/* Setting other Port Stuff */
-tty.c_cflag     &=  ~PARENB;        // Make 8n1
-tty.c_cflag     &=  ~CSTOPB;
-tty.c_cflag     &=  ~CSIZE;
-tty.c_cflag     |=  CS8;
+    /* Setting other Port Stuff */
+    tty.c_cflag     &=  ~PARENB;        // Make 8n1
+    tty.c_cflag     &=  ~CSTOPB;
+    tty.c_cflag     &=  ~CSIZE;
+    tty.c_cflag     |=  CS8;
 
-tty.c_cflag     &=  ~CRTSCTS;       // no flow control
-tty.c_cc[VMIN]      =   1;                  // read doesn't block
-tty.c_cc[VTIME]     =   5;                  // 0.5 seconds read timeout
-tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
+    tty.c_cflag     &=  ~CRTSCTS;       // no flow control
+    tty.c_cc[VMIN]      =   0;                  // read doesn't block
+    tty.c_cc[VTIME]     =   5;                  // 0.5 seconds read timeout
+    tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
 
-/* Make raw */
-cfmakeraw(&tty);
+    /* Make raw */
+    cfmakeraw(&tty);
 
-/* Flush Port, then applies attributes */
-tcflush( fd, TCIFLUSH );
+    /* Flush Port, then applies attributes */
+    tcflush( fd, TCIFLUSH );
 
-        if ( tcsetattr ( fd, TCSANOW, &tty ) != 0)
-        {
-            syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
-            exit(1);
-        }
-        return 0;
+    if ( tcsetattr ( fd, TCSANOW, &tty ) != 0)
+    {
+        syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
+        exit(1);
+    }
+    return 0;
 }
 
 void set_blocking (int fd, int block_numChars, int block_timeout)
@@ -191,21 +191,21 @@ void set_blocking (int fd, int block_numChars, int block_timeout)
 MYSQL* openSQL(const char *db_username, const char *db_passwd, const char *db_name)
 {
 
-        MYSQL *con = mysql_init(NULL);
+    MYSQL *con = mysql_init(NULL);
 
-        if (con == NULL)
-        {
-                syslog(LOG_INFO, "ERROR :: Error in openSQL: %s  Exiting...\n", mysql_error(con));
-                exit(1);
-        }
+    if (con == NULL)
+    {
+            syslog(LOG_INFO, "ERROR :: Error in openSQL: %s  Exiting...\n", mysql_error(con));
+            exit(1);
+    }
 
-        if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL)
-        {
-                syslog(LOG_INFO, "ERROR :: Error in openSQL: %s  Exiting...\n", mysql_error(con));
-                mysql_close(con);
-                exit(1);
-        }
-        return  con;
+    if (mysql_real_connect(con, "127.0.0.1", db_username, db_passwd, db_name, 0, NULL, 0) == NULL)
+    {
+            syslog(LOG_INFO, "ERROR :: Error in openSQL: %s  Exiting...\n", mysql_error(con));
+            mysql_close(con);
+            exit(1);
+    }
+    return  con;
 }
 
 int getBarcodeUSB(hid_device* handle, char *barcode) 
@@ -297,7 +297,7 @@ int readLetterFromUSB(hid_device* handle, int nonblocking)
 
 void consumeUSB(hid_device *handle)
 {
-    int i = 0, status;
+    int i = 0, status = 1;
     unsigned char buf[9];
 
     while(status > 0)
