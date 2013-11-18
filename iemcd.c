@@ -862,4 +862,5 @@ void logInputArgs(struct settings *settings)
     syslog(LOG_INFO, "   Bar PID     :: %d", settings->barcode_PID);
     syslog(LOG_INFO, "   Bar Length  :: %d", settings->barcodeLength);
     syslog(LOG_INFO, "   USB Timeout :: %d", settings->usbTimeout);
+    syslog(LOG_INFO, "   TTY Timeout :: %d", settings->ttyTimeout);
 }
