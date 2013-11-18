@@ -97,7 +97,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
 {
     int fd;
 
-    fd = open (ttyName, O_RDWR | O_NOCTTY | O_SYNC);
+    fd = open (ttyName, O_RDWR | O_NOCTTY);
     if (fd < 0)
     {
         syslog(LOG_INFO, "ERROR :: error %d returned while opening serial device %s: %s", errno, ttyName, strerror (errno));
@@ -358,7 +358,7 @@ hid_device* openUSB(int vID, int pID)
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 {
     char barcode[BARCODE_LENGTH + 1];
-    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5, pickedUp, expired FROM orderTable WHERE pickedup='false' AND expired='false' AND orderID=\"";
+    char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE pickedup='false' AND expired='false' AND orderID=\"";
     char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=\"";
     char queryString[200];
     int *ingredients, barcodeValid;
@@ -380,7 +380,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         strcpy(queryString, baseSelect);
         strcat(queryString, barcode);
         strcat(queryString, "\"");
-        syslog(LOG_INFO, "DEBUG :: Barcode:%s  Query string: %s", barcode,  queryString);
+        // syslog(LOG_INFO, "DEBUG :: Barcode:%s  Query string: %s", barcode,  queryString);
 
         // query sql for barcode
         ingredients = getIngredFromSQL(con, queryString);
