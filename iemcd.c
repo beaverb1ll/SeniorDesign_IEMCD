@@ -495,6 +495,7 @@ struct settings* parseArgs(int argc, char* const* argv)
             case 'a':
                     // serial read timeout
                     allSettings->ttyTimeout = atoi(optarg);
+                    break;
 
             case '?':
                     syslog(LOG_INFO, "ERROR :: Invalid startup argument: %c :: Exiting...", optopt);
