@@ -51,6 +51,7 @@ ldconfig -v | grep hid
 -v :: USB Vendor ID
 -s :: USB Product ID
 -t :: USB Read Timeout (ms)
+-a :: tty Read Timeout (ds)
 
 ### Sample Barcode
 The required length of a barcode is currently set to 40 characters long. Valid characters are 0-9 and a-z.
@@ -99,12 +100,12 @@ CREATE TABLE `orderTable` (
   `orderTime` int(11) DEFAULT '0',
   `expired` varchar(10) DEFAULT 'false',
   `pickedUp` varchar(10) DEFAULT 'false',
-  `Ing0` int(11) DEFAULT NULL,
-  `Ing1` int(11) DEFAULT NULL,
-  `Ing2` int(11) DEFAULT NULL,
-  `Ing3` int(11) DEFAULT NULL,
-  `Ing4` int(11) DEFAULT NULL,
-  `Ing5` int(11) DEFAULT NULL,
+  `Ing0`  FLOAT(8,4) DEFAULT NULL,
+  `Ing1` FLOAT(8,4) DEFAULT NULL,
+  `Ing2` FLOAT(8,4) DEFAULT NULL,
+  `Ing3` FLOAT(8,4) DEFAULT NULL,
+  `Ing4` FLOAT(8,4) DEFAULT NULL,
+  `Ing5` FLOAT(8,4) DEFAULT NULL,
   PRIMARY KEY (`id`)
 );
 ```
