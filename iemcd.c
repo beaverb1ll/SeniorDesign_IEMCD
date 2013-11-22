@@ -25,6 +25,8 @@
 #define MAX_SECONDS_RESERVED 600 // 10 minutes
 #define PURGE_BARCODE 900009
 #define FULL_VOLUME_LEVEL 100 // in oz
+#define PURGE_VOLUME 5
+#define OZ_TO_SEC_RATIO 1000         // Num OZ/milliSec
 
 #define VENDOR_ID 0x05e0  
 #define PRODUCT_ID 0x1200 
@@ -58,7 +60,7 @@ hid_device* openUSB(int vID, int pID);
 int convertUSBInput(unsigned char* inputChar);
 int readLetterFromUSB(hid_device* handle, int nonblocking);
 int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con);
-int dispenseDrink(int cb_fd, int *ingredArray);
+int dispenseDrink(int cb_fd, double *ingredArray);
 int sendCommand_getAck(int fd, const char *command);
 int getSerialAck(int fd);
 int getIngredFromSQL(MYSQL *sql_con, const char *query, double *ingred);
@@ -216,8 +218,8 @@ int getBarcodeUSB(hid_device* handle, char *barcode)
         else if(returnedValue < 0)
         {
             barcode[i] = '\0';
-        	syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode: %s read: %d", barcode, i);
-        	return -1;
+            syslog(LOG_INFO, "DEBUG :: Invalid character read or timeout, skipping barcode: %s read: %d", barcode, i);
+            return -1;
         }
         // if its here, got a good character so store the incoming character
         barcode[i] = (char)returnedValue;
@@ -297,9 +299,9 @@ void consumeUSB(hid_device *handle)
 int convertUSBInput(unsigned char* inputChar)
 {
     int modifier = (int)inputChar[0];
-	int input = (int)inputChar[2];
-	
-	// syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
+    int input = (int)inputChar[2];
+    
+    // syslog(LOG_INFO, "DEBUG :: Char value to convert: %d", input);
     // syslog(LOG_INFO, "DEBUG :: Mod Keys to convert: %d", modifier);
 
     if (input > 3 && input < 30) // this is from a-z 
@@ -310,29 +312,29 @@ int convertUSBInput(unsigned char* inputChar)
         }
     }
 
-	if (input == 0) // this is no character
-	{
-		return 0;
-	}
+    if (input == 0) // this is no character
+    {
+        return 0;
+    }
     if (modifier != 0) // if any modifier is presed here, its not valid
     {
         // syslog(LOG_INFO, "DEBUG :: Mod key is pressed, skipping barcode.");
         return -1;
     }
 
-	if (input == 39)  // this is a zero from the barcode scanner
-	{
-		return '0';
-	}
+    if (input == 39)  // this is a zero from the barcode scanner
+    {
+        return '0';
+    }
 
-	if (input > 29 && input < 39) // this is from 1-9 from the barcode scanner
-	{
-		return input + 19;
-	}
-	
+    if (input > 29 && input < 39) // this is from 1-9 from the barcode scanner
+    {
+        return input + 19;
+    }
+    
     // something's wrong if reached here, return invalid char and skip barcode
     // syslog (LOG_INFO, "DEBUG :: No character match. skipping barcode.");
-	return -1;
+    return -1;
 }
 
 hid_device* openUSB(int vID, int pID)
@@ -363,7 +365,6 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
     char baseSelect[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE pickedup='false' AND expired='false' AND orderID=\"";
     char baseUpdate[] = "UPDATE orderTable SET pickedup='true' WHERE orderID=\"";
     char ingredAmountQuery[] = "SELECT SUM(Ing0), SUM(Ing1), SUM(Ing2), SUM(Ing3), SUM(Ing4), SUM(Ing5) FROM orderTable WHERE expired='false' AND pickedUp='false' OR orderID='0'";
-    char remainingQuery[] = "SELECT Ing0, Ing1, Ing2, Ing3, Ing4, Ing5 FROM orderTable WHERE orderID='0'";
 
     char queryString[200];
     int barcodeValid, i;
@@ -463,7 +464,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         if (mysql_query(con, queryString))
         {
             syslog(LOG_INFO, "DEBUG :: Unable to update SQL with string: %s", queryString);
-		} else
+        } else
         {
             syslog(LOG_INFO, "DEBUG :: Updated SQL.");
         }
@@ -596,7 +597,7 @@ int baudToInt(const char *bRate)
  *      - Error: 1
  *
  */
-int dispenseDrink(int cb_fd, int *ingredArray)
+int dispenseDrink(int cb_fd, double *ingredArray)
 {
     int i;
     const char *endString = "T";
@@ -616,10 +617,10 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     for (i = 0; i < NUM_INGREDIENTS; i++)
     {
         // convert ingredient to string and store into command
-        sprintf(command, "%d", ingredArray[i]);
+        sprintf(command, "%dT", OZ_TO_SEC_RATIO * ingredArray[i]);
         // itoa(ingredArray[i], command, 10);
         // append end string
-        strcat(command, endString);
+        // strcat(command, endString);
 
 
         // send commmand, wait for response
@@ -642,8 +643,8 @@ int dispenseDrink(int cb_fd, int *ingredArray)
     // wait for response
     if(getSerialAck(cb_fd)) 
     {
-    	syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
-    	return 1;
+        syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
+        return 1;
     }
     // write(cb_fd, "Y", 1);
 
@@ -669,19 +670,19 @@ int sendCommand_getAck(int fd, const char *command)
 
 int getSerialAck(int fd) 
 {
-	char charRead;
+    char charRead;
     int numRead;
 
     // clear receive buffer
     // tcflush(fd, TCIFLUSH);
 
-	 // wait for response
+     // wait for response
     numRead = read(fd, &charRead, 1);
 
     if (numRead < 0)
     {
-    		syslog(LOG_INFO, "DEBUG :: Error returned from read");
-    		return 1;
+            syslog(LOG_INFO, "DEBUG :: Error returned from read");
+            return 1;
     }
 
     if(numRead < 1)
@@ -700,9 +701,9 @@ int getSerialAck(int fd)
         case 'y':
                 // fall through
         case 'Y':
-        		// fall through
+                // fall through
         case 'z':
-        		// fall through
+                // fall through
         case 'Z':
             syslog(LOG_INFO, "DEBUG :: Received f/F/y/Y/z/Z for ACK");
             return 0;
