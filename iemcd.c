@@ -631,6 +631,7 @@ int dispenseDrink(int cb_fd, double *ingredArray)
         // append end string
         // strcat(command, endString);
 
+        syslog(LOG_INFO, "Sent: %s", command);
 
         // send commmand, wait for response
         if(sendCommand_getAck(cb_fd, command))
