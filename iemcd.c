@@ -387,6 +387,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
         if (strcmp(barcode, PURGE_BARCODE) == 0)
         {
             // PURGE!!!
+            int num_purge = 0;
 
             if (getIngredFromSQL(con, ingredAmountQuery, ingredients))
             {
@@ -396,12 +397,18 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
                     if (ingredients[i] == FULL_VOLUME_LEVEL)
                     {
                         ingredients[i] = PURGE_VOLUME;
+                        num_purge++;
 
                     } else 
                     {
                         ingredients[i] = 0.0;
                     }
-                    syslog(LOG_INFO, "DEBUG :: Ingr0: %lf", ingredients[i]);
+                    syslog(LOG_INFO, "DEBUG :: Ingr%d: %lf", i, ingredients[i]);
+                }
+                if (num_purge == 0)
+                {
+                    syslog(LOG_INFO, "DEBUG :: No ingredients to purge. Skipping...");
+                    continue;
                 }
 
                 //  send dispense command with ingredients
