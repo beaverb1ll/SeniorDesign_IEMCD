@@ -626,7 +626,10 @@ int dispenseDrink(int cb_fd, double *ingredArray)
     for (i = 0; i < NUM_INGREDIENTS; i++)
     {
         // convert ingredient to string and store into command
-        sprintf(command, "%dT", (int)OZ_TO_SEC_RATIO * ingredArray[i]);
+        double dispAmount = OZ_TO_SEC_RATIO * ingredArray[i];
+
+        syslog(LOG_INFO, "dispAmount - Double: %lf", dispAmount);
+        sprintf(command, "%dT", (int)dispAmount);
         // itoa(ingredArray[i], command, 10);
         // append end string
         // strcat(command, endString);
