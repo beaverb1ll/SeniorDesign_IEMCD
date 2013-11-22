@@ -390,6 +390,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
 
             if (getIngredFromSQL(con, ingredAmountQuery, ingredients))
             {
+                syslog(LOG_INFO, "DEBUG :: PURGE VALUES");
                 for (i = 0; i < NUM_INGREDIENTS; i++)
                 {
                     if (ingredients[i] == FULL_VOLUME_LEVEL)
@@ -400,6 +401,7 @@ int doWork(int commandsFD, hid_device *barcodeHandle, MYSQL *con)
                     {
                         ingredients[i] = 0.0;
                     }
+                    syslog(LOG_INFO, "DEBUG :: Ingr0: %lf", ingredients[i]);
                 }
 
                 //  send dispense command with ingredients
