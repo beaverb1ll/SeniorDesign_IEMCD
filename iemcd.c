@@ -23,7 +23,7 @@
 #define BARCODE_LENGTH 34
 #define NUM_INGREDIENTS 6
 #define MAX_SECONDS_RESERVED 600 // 10 minutes
-#define PURGE_BARCODE 900009
+#define PURGE_BARCODE "95FD69C062F5A6F3501D92A0E946A56789"
 #define FULL_VOLUME_LEVEL 100 // in oz
 #define PURGE_VOLUME 5
 #define OZ_TO_SEC_RATIO 1000         // Num OZ/milliSec
@@ -617,7 +617,7 @@ int dispenseDrink(int cb_fd, double *ingredArray)
     for (i = 0; i < NUM_INGREDIENTS; i++)
     {
         // convert ingredient to string and store into command
-        sprintf(command, "%dT", OZ_TO_SEC_RATIO * ingredArray[i]);
+        sprintf(command, "%dT", (int)OZ_TO_SEC_RATIO * ingredArray[i]);
         // itoa(ingredArray[i], command, 10);
         // append end string
         // strcat(command, endString);
