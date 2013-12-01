@@ -24,7 +24,7 @@
 #define NUM_INGREDIENTS 6
 #define MAX_SECONDS_RESERVED 600 // 10 minutes
 #define PURGE_BARCODE "95FD69C062F5A6F3501D92A0E946A56789"
-#define FULL_VOLUME_LEVEL 100 // in oz
+#define FULL_VOLUME_LEVEL 68 // in oz
 #define PURGE_VOLUME 5
 #define SEC_TO_OZ_RATIO 1625         // Num OZ/milliSec
 
