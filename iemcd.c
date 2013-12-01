@@ -109,7 +109,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
-    set_blocking (fd, blockingAmnt, 600);         // http://linux.die.net/man/3/termios for info
+    // set_blocking (fd, blockingAmnt, 600);         // http://linux.die.net/man/3/termios for info
     return fd;
 }
 
@@ -134,8 +134,8 @@ int set_interface_attribs (int fd, int speed, int parity)
     tty.c_cflag     |=  CS8;
 
     tty.c_cflag     &=  ~CRTSCTS;       // no flow control
-    tty.c_cc[VMIN]      =   0;                  // read doesn't block
-    tty.c_cc[VTIME]     =   5;                  // 0.5 seconds read timeout
+    tty.c_cc[VMIN]      =   0;                  
+    tty.c_cc[VTIME]     =   600;                  // 60 seconds read timeout
     tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
 
     /* Make raw */
