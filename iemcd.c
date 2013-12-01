@@ -109,7 +109,7 @@ int openSerial(const char *ttyName, int speed, int parity, int blockingAmnt)
         exit(1);
     }
     set_interface_attribs (fd, speed, parity);
-    set_blocking (fd, blockingAmnt, currentSettings->ttyTimeout);         // http://linux.die.net/man/3/termios for info
+    set_blocking (fd, blockingAmnt, 600);         // http://linux.die.net/man/3/termios for info
     return fd;
 }
 
