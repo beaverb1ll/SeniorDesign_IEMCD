@@ -677,6 +677,7 @@ int dispenseDrink(int cb_fd, double *ingredArray)
     // wait for response
     if(getSerialAck(cb_fd)) 
     {
+        write(cb_fd, "Y", 1);
         syslog(LOG_INFO, "DEBUG :: Dispense Controller failed to dispense");
         return 1;
     }
