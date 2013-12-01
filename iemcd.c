@@ -123,33 +123,52 @@ int set_interface_attribs (int fd, int speed, int parity)
         exit(1);
     }
 
+    tty.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+    tty.c_oflag &= ~(OCRNL | ONLCR | ONLRET | ONOCR | ONOEOT| OFILL | OLCUC | OPOST);
+    tty.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+    tty.c_cflag &= ~(CSIZE | PARENB);
+    tty.c_cflag |= CS8;
+
+    tty.c_cc[VMIN]  = 0;
+    tty.c_cc[VTIME] = 600;
+
+    if(cfsetispeed(&config, B9600) < 0 || cfsetospeed(&config, B9600) < 0) {
+        syslog(LOG_INFO, "ERROR :: Unable to set baud rate. Exiting...\n", errno);
+        exit(1);
+    }
+    if(tcsetattr(fd, TCSAFLUSH, &tty) < 0) {
+        syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
+        exit(1);
+    }
+
+
     /* Set Baud Rate */
-    cfsetospeed (&tty, (speed_t)B9600);
-    cfsetispeed (&tty, (speed_t)B9600);
+    // cfsetospeed (&tty, (speed_t)B9600);
+    // cfsetispeed (&tty, (speed_t)B9600);
 
-    /* Setting other Port Stuff */
-    tty.c_lflag    &= ~(ICANON);
-    tty.c_cflag     &=  ~PARENB;        // Make 8n1
-    tty.c_cflag     &=  ~CSTOPB;
-    tty.c_cflag     &=  ~CSIZE;
-    tty.c_cflag     |=  CS8;
+    // /* Setting other Port Stuff */
+    // tty.c_lflag    &= ~(ICANON);
+    // tty.c_cflag     &=  ~PARENB;        // Make 8n1
+    // tty.c_cflag     &=  ~CSTOPB;
+    // tty.c_cflag     &=  ~CSIZE;
+    // tty.c_cflag     |=  CS8;
 
-    tty.c_cflag     &=  ~CRTSCTS;       // no flow control
-    tty.c_cc[VMIN]      =   0;                  
-    tty.c_cc[VTIME]     =   600;                  // 60 seconds read timeout
-    tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
+    // tty.c_cflag     &=  ~CRTSCTS;       // no flow control
+    // tty.c_cc[VMIN]      =   0;                  
+    // tty.c_cc[VTIME]     =   600;                  // 60 seconds read timeout
+    // tty.c_cflag     |=  CREAD | CLOCAL;     // turn on READ & ignore ctrl lines
 
     /* Make raw */
 //    cfmakeraw(&tty);
 
     /* Flush Port, then applies attributes */
-    tcflush( fd, TCIFLUSH );
+    // tcflush( fd, TCIFLUSH );
 
-    if ( tcsetattr ( fd, TCSANOW, &tty ) != 0)
-    {
-        syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
-        exit(1);
-    }
+    // if ( tcsetattr ( fd, TCSANOW, &tty ) != 0)
+    // {
+    //     syslog(LOG_INFO, "ERROR :: error %d from tcsetattr. Unable to set tty attributes. Exiting...\n", errno);
+    //     exit(1);
+    // }
     return 0;
 }
 
