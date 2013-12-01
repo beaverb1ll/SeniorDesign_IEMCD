@@ -26,7 +26,7 @@
 #define PURGE_BARCODE "95FD69C062F5A6F3501D92A0E946A56789"
 #define FULL_VOLUME_LEVEL 100 // in oz
 #define PURGE_VOLUME 5
-#define OZ_TO_SEC_RATIO 1000         // Num OZ/milliSec
+#define SEC_TO_OZ_RATIO 1625         // Num OZ/milliSec
 
 #define VENDOR_ID 0x05e0  
 #define PRODUCT_ID 0x1200 
@@ -626,7 +626,7 @@ int dispenseDrink(int cb_fd, double *ingredArray)
     for (i = 0; i < NUM_INGREDIENTS; i++)
     {
         // convert ingredient to string and store into command
-        double dispAmount = OZ_TO_SEC_RATIO * ingredArray[i];
+        double dispAmount = SEC_TO_OZ_RATIO * ingredArray[i];
 
         syslog(LOG_INFO, "dispAmount - Double: %lf", dispAmount);
         sprintf(command, "%dT", (int)dispAmount);
