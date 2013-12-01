@@ -128,7 +128,7 @@ int set_interface_attribs (int fd, int speed, int parity)
     cfsetispeed (&tty, (speed_t)B9600);
 
     /* Setting other Port Stuff */
-    tty..c_lflag    &= ~(ICANON);
+    tty.c_lflag    &= ~(ICANON);
     tty.c_cflag     &=  ~PARENB;        // Make 8n1
     tty.c_cflag     &=  ~CSTOPB;
     tty.c_cflag     &=  ~CSIZE;
